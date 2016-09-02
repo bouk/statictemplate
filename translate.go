@@ -18,8 +18,12 @@ type scope map[string]reflect.Type
 func Translate(name, text string, dot reflect.Type) (string, error) {
 	return (&translator{
 		funcs: map[string]interface{}{
-			"print":  fmt.Sprint,
-			"printf": fmt.Sprintf,
+			"print":    fmt.Sprint,
+			"printf":   fmt.Sprintf,
+			"println":  fmt.Sprintln,
+			"html":     template.HTMLEscaper,
+			"js":       template.JSEscaper,
+			"urlquery": template.URLQueryEscaper,
 		},
 		scopes: []scope{
 			make(scope),
