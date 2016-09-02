@@ -56,6 +56,27 @@ func Name(w io.Writer, dot string) error {
   _, _ = fmt.Fprint(w, false)
   return nil
 }`},
+		{`{{ $a := 1 }}{{ $a }}`, `
+func Name(w io.Writer, dot string) error {
+  _Vara := 1
+  _, _ = fmt.Fprint(w, _Vara)
+  return nil
+}`},
+		{`{{ $a := 1 }}{{ $a := 2 }}`, `
+func Name(w io.Writer, dot string) error {
+  _Vara := 1
+  _Vara = 2
+  return nil
+}`},
+		{`{{ $a := 1 }}{{ if . }}{{ $a := 2 }}{{ end }}{{ $a := 3 }}`, `
+func Name(w io.Writer, dot string) error {
+  _Vara := 1
+  if eval := dot; len(eval) != 0 {
+    _Vara := 2
+  }
+  _Vara = 3
+  return nil
+}`},
 		{`{{ "hi" | print }}`, `
 func Name(w io.Writer, dot string) error {
   _, _ = fmt.Fprint(w, fmt.Sprint("hi"))
@@ -124,6 +145,34 @@ func Name(w io.Writer, dot struct{ A string }) error {
   _, _ = fmt.Fprint(w, dot.A)
   return nil
 }`, struct{ A string }{""}},
+		{"{{ range . }}Hello{{ end }}", `
+func Name(w io.Writer, dot []string) error {
+  if eval := dot; len(eval) != 0 {
+    for range eval {
+      _, _ = io.WriteString(w, "Hello")
+    }
+  }
+  return nil
+}`, []string{"hi"}},
+		{"{{ range $a := . }}{{ $a }}{{ end }}", `
+func Name(w io.Writer, dot []string) error {
+  if eval := dot; len(eval) != 0 {
+    for _, _Vara := range eval {
+      _, _ = fmt.Fprint(w, _Vara)
+    }
+  }
+  return nil
+}`, []string{"hi"}},
+		{"{{ range $i, $a := . }}{{ $i }}{{ $a }}{{ end }}", `
+func Name(w io.Writer, dot []string) error {
+  if eval := dot; len(eval) != 0 {
+    for _Vari, _Vara := range eval {
+      _, _ = fmt.Fprint(w, _Vari)
+      _, _ = fmt.Fprint(w, _Vara)
+    }
+  }
+  return nil
+}`, []string{"hi"}},
 		{"{{ print .A }}", `
 func Name(w io.Writer, dot struct{ A string }) error {
   _, _ = fmt.Fprint(w, fmt.Sprint(dot.A))
@@ -178,6 +227,14 @@ func Name(w io.Writer, dot struct{ A []int }) error {
     _, _ = io.WriteString(w, " ")
     _, _ = fmt.Fprint(w, dot.A)
     _, _ = io.WriteString(w, " ")
+  }
+  return nil
+}`, struct{ A []int }{nil}},
+		{"{{ if $b := .A }}{{ $b }}{{end}}", `
+func Name(w io.Writer, dot struct{ A []int }) error {
+  if eval := dot.A; len(eval) != 0 {
+    _Varb := eval
+    _, _ = fmt.Fprint(w, _Varb)
   }
   return nil
 }`, struct{ A []int }{nil}},
