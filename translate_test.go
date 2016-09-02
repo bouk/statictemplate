@@ -28,12 +28,12 @@ func Name(w io.Writer, dot string) error {
 }`},
 		{`{{ "hi" }}`, `
 func Name(w io.Writer, dot string) error {
-  _, _ = fmt.Fprint(w, "hi")
+  _, _ = io.WriteString(w, "hi")
   return nil
 }`},
 		{`{{ print ( "hi" | print ) }}`, `
 func Name(w io.Writer, dot string) error {
-  _, _ = fmt.Fprint(w, fmt.Sprint(fmt.Sprint("hi")))
+  _, _ = io.WriteString(w, fmt.Sprint(fmt.Sprint("hi")))
   return nil
 }`},
 		{`{{ 1 }}`, `
@@ -43,7 +43,7 @@ func Name(w io.Writer, dot string) error {
 }`},
 		{`{{ . }}`, `
 func Name(w io.Writer, dot string) error {
-  _, _ = fmt.Fprint(w, dot)
+  _, _ = io.WriteString(w, dot)
   return nil
 }`},
 		{`{{ true }}`, `
@@ -60,6 +60,12 @@ func Name(w io.Writer, dot string) error {
 func Name(w io.Writer, dot string) error {
   _Vara := 1
   _, _ = fmt.Fprint(w, _Vara)
+  return nil
+}`},
+		{`{{ $a := "hey" }}{{ $a }}`, `
+func Name(w io.Writer, dot string) error {
+  _Vara := "hey"
+  _, _ = io.WriteString(w, _Vara)
   return nil
 }`},
 		{`{{ $a := 1 }}{{ $a := 2 }}`, `
@@ -79,22 +85,22 @@ func Name(w io.Writer, dot string) error {
 }`},
 		{`{{ "hi" | print }}`, `
 func Name(w io.Writer, dot string) error {
-  _, _ = fmt.Fprint(w, fmt.Sprint("hi"))
+  _, _ = io.WriteString(w, fmt.Sprint("hi"))
   return nil
 }`},
 		{`{{ ( "hi" | printf "%v" ) | print }}`, `
 func Name(w io.Writer, dot string) error {
-  _, _ = fmt.Fprint(w, fmt.Sprint(fmt.Sprintf("%v", "hi")))
+  _, _ = io.WriteString(w, fmt.Sprint(fmt.Sprintf("%v", "hi")))
   return nil
 }`},
 		{`{{ ( "hi" | print ) | printf "%v" }}`, `
 func Name(w io.Writer, dot string) error {
-  _, _ = fmt.Fprint(w, fmt.Sprintf("%v", fmt.Sprint("hi")))
+  _, _ = io.WriteString(w, fmt.Sprintf("%v", fmt.Sprint("hi")))
   return nil
 }`},
 		{`{{ "hi" | print | print }}`, `
 func Name(w io.Writer, dot string) error {
-  _, _ = fmt.Fprint(w, fmt.Sprint(fmt.Sprint("hi")))
+  _, _ = io.WriteString(w, fmt.Sprint(fmt.Sprint("hi")))
   return nil
 }`},
 		{`{{ if true }}a{{end}}`, `
@@ -110,6 +116,32 @@ func Name(w io.Writer, dot string) error {
     _, _ = io.WriteString(w, "a")
   } else {
     _, _ = io.WriteString(w, "b")
+  }
+  return nil
+}`},
+		{`{{define "T1"}}ONE{{end}}
+{{define "T2"}}TWO {{template "T1"}}{{end}}
+{{define "T3"}}{{template "T1"}} {{template "T2"}}{{end}}
+{{template "T3"}}`, `
+func Name(w io.Writer, dot string) error {
+  _, _ = io.WriteString(w, "\n")
+  _, _ = io.WriteString(w, "\n")
+  _, _ = io.WriteString(w, "\n")
+  {
+    dot := nil
+    {
+      dot := nil
+      _, _ = io.WriteString(w, "ONE")
+    }
+    _, _ = io.WriteString(w, " ")
+    {
+      dot := nil
+      _, _ = io.WriteString(w, "TWO ")
+      {
+        dot := nil
+        _, _ = io.WriteString(w, "ONE")
+      }
+    }
   }
   return nil
 }`},
@@ -142,7 +174,7 @@ func TestComplexInput(t *testing.T) {
 	}{
 		{"{{ .A }}", `
 func Name(w io.Writer, dot struct{ A string }) error {
-  _, _ = fmt.Fprint(w, dot.A)
+  _, _ = io.WriteString(w, dot.A)
   return nil
 }`, struct{ A string }{""}},
 		{"{{ range . }}Hello{{ end }}", `
@@ -158,7 +190,7 @@ func Name(w io.Writer, dot []string) error {
 func Name(w io.Writer, dot []string) error {
   if eval := dot; len(eval) != 0 {
     for _, _Vara := range eval {
-      _, _ = fmt.Fprint(w, _Vara)
+      _, _ = io.WriteString(w, _Vara)
     }
   }
   return nil
@@ -168,24 +200,24 @@ func Name(w io.Writer, dot []string) error {
   if eval := dot; len(eval) != 0 {
     for _Vari, _Vara := range eval {
       _, _ = fmt.Fprint(w, _Vari)
-      _, _ = fmt.Fprint(w, _Vara)
+      _, _ = io.WriteString(w, _Vara)
     }
   }
   return nil
 }`, []string{"hi"}},
 		{"{{ print .A }}", `
 func Name(w io.Writer, dot struct{ A string }) error {
-  _, _ = fmt.Fprint(w, fmt.Sprint(dot.A))
+  _, _ = io.WriteString(w, fmt.Sprint(dot.A))
   return nil
 }`, struct{ A string }{""}},
 		{"{{ (.).A }}", `
 func Name(w io.Writer, dot struct{ A string }) error {
-  _, _ = fmt.Fprint(w, dot.A)
+  _, _ = io.WriteString(w, dot.A)
   return nil
 }`, struct{ A string }{""}},
 		{"{{ (.A) }}", `
 func Name(w io.Writer, dot struct{ A string }) error {
-  _, _ = fmt.Fprint(w, dot.A)
+  _, _ = io.WriteString(w, dot.A)
   return nil
 }`, struct{ A string }{""}},
 		{"{{ with .A }} {{ . }} {{else}} {{ .A }} {{end}}", `
@@ -197,7 +229,7 @@ func Name(w io.Writer, dot struct{ A string }) error {
     _, _ = io.WriteString(w, " ")
   } else {
     _, _ = io.WriteString(w, " ")
-    _, _ = fmt.Fprint(w, dot.A)
+    _, _ = io.WriteString(w, dot.A)
     _, _ = io.WriteString(w, " ")
   }
   return nil
@@ -240,32 +272,58 @@ func Name(w io.Writer, dot struct{ A []int }) error {
 }`, struct{ A []int }{nil}},
 		{`{{ .Hello }}`, `
 func Name(w io.Writer, dot *statictemplate.testStruct) error {
-  _, _ = fmt.Fprint(w, dot.Hello())
+  _, _ = io.WriteString(w, dot.Hello())
   return nil
 }`, &testStruct{}},
 		{`{{ .Recursive.Recursive.Recursive.Upcase "whatup" }}`, `
 func Name(w io.Writer, dot *statictemplate.testStruct) error {
-  _, _ = fmt.Fprint(w, dot.Recursive().Recursive().Recursive().Upcase("whatup"))
+  _, _ = io.WriteString(w, dot.Recursive().Recursive().Recursive().Upcase("whatup"))
   return nil
 }`, &testStruct{}},
 		{`{{ ( .Recursive.Recursive ).Recursive.Upcase "whatup" }}`, `
 func Name(w io.Writer, dot *statictemplate.testStruct) error {
-  _, _ = fmt.Fprint(w, dot.Recursive().Recursive().Recursive().Upcase("whatup"))
+  _, _ = io.WriteString(w, dot.Recursive().Recursive().Recursive().Upcase("whatup"))
   return nil
 }`, &testStruct{}},
 		{`{{ .Hello | printf "%q" }}`, `
 func Name(w io.Writer, dot *statictemplate.testStruct) error {
-  _, _ = fmt.Fprint(w, fmt.Sprintf("%q", dot.Hello()))
+  _, _ = io.WriteString(w, fmt.Sprintf("%q", dot.Hello()))
   return nil
 }`, &testStruct{}},
 		{`{{ .Upcase "whatup" }}`, `
 func Name(w io.Writer, dot *statictemplate.testStruct) error {
-  _, _ = fmt.Fprint(w, dot.Upcase("whatup"))
+  _, _ = io.WriteString(w, dot.Upcase("whatup"))
   return nil
 }`, &testStruct{}},
 		{`{{ "whatup" | .Upcase  }}`, `
 func Name(w io.Writer, dot *statictemplate.testStruct) error {
-  _, _ = fmt.Fprint(w, dot.Upcase("whatup"))
+  _, _ = io.WriteString(w, dot.Upcase("whatup"))
+  return nil
+}`, &testStruct{}},
+		{`{{define "T1"}}{{ . }}{{end}}
+{{define "T2"}}TWO {{template "T1" .Hello}}{{end}}
+{{define "T3"}}{{template "T1" .}} {{template "T2" .}}{{end}}
+{{template "T3" .}}`, `
+func Name(w io.Writer, dot *statictemplate.testStruct) error {
+  _, _ = io.WriteString(w, "\n")
+  _, _ = io.WriteString(w, "\n")
+  _, _ = io.WriteString(w, "\n")
+  {
+    dot := dot
+    {
+      dot := dot
+      _, _ = fmt.Fprint(w, dot)
+    }
+    _, _ = io.WriteString(w, " ")
+    {
+      dot := dot
+      _, _ = io.WriteString(w, "TWO ")
+      {
+        dot := dot.Hello()
+        _, _ = io.WriteString(w, dot)
+      }
+    }
+  }
   return nil
 }`, &testStruct{}},
 	} {

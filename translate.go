@@ -28,12 +28,20 @@ func Translate(name, text string, dot reflect.Type) (string, error) {
 		scopes: []scope{
 			make(scope),
 		},
+		// templates: make(map[string][reflect.Type]*compiledTemplate),
 	}).translate(name, text, dot)
+}
+
+type compiledTemplate struct {
+	code         string
+	functionName string
 }
 
 type translator struct {
 	funcs  template.FuncMap
 	scopes []scope
+	trees  map[string]*parse.Tree
+	// templates map[string][reflect.Type]*compiledTemplate
 }
 
 func (t *translator) pushScope() {
@@ -65,11 +73,12 @@ func (t *translator) findVariable(name string) (reflect.Type, error) {
 }
 
 func (t *translator) translate(name, text string, dot reflect.Type) (string, error) {
-	trees, err := parse.Parse(name, text, "", "", t.funcs)
+	var err error
+	t.trees, err = parse.Parse(name, text, "", "", t.funcs)
 	if err != nil {
 		return "", err
 	}
-	tree := trees[name]
+	tree := t.trees[name]
 
 	typeName := dot.Name()
 	if typeName == "" {
@@ -104,20 +113,21 @@ func (t *translator) translateNode(node parse.Node, w io.Writer, dot reflect.Typ
 		return err
 	case *parse.ActionNode:
 		pipe := node.Pipe
+		writer := w
 		if len(pipe.Decl) == 0 {
-			io.WriteString(w, "_, _ = fmt.Fprint(w, ")
+			writer = new(bytes.Buffer)
 		} else if len(pipe.Decl) == 1 {
 			ident := pipe.Decl[0].Ident[0][1:]
 			if t.inScope(ident) {
-				fmt.Fprintf(w, "%s%s = ", VarPrefix, ident)
+				fmt.Fprintf(writer, "%s%s = ", VarPrefix, ident)
 			} else {
-				fmt.Fprintf(w, "%s%s := ", VarPrefix, ident)
+				fmt.Fprintf(writer, "%s%s := ", VarPrefix, ident)
 			}
 		} else {
 			return fmt.Errorf("Only support single variable for assignment")
 		}
 
-		typ, err := t.translatePipe(w, dot, pipe)
+		typ, err := t.translatePipe(writer, dot, pipe)
 		if err != nil {
 			return err
 		}
@@ -127,6 +137,12 @@ func (t *translator) translateNode(node parse.Node, w io.Writer, dot reflect.Typ
 		}
 
 		if len(node.Pipe.Decl) == 0 {
+			if typ == reflect.TypeOf("") {
+				io.WriteString(w, "_, _ = io.WriteString(w, ")
+			} else {
+				io.WriteString(w, "_, _ = fmt.Fprint(w, ")
+			}
+			writer.(*bytes.Buffer).WriteTo(w)
 			io.WriteString(w, ")")
 		}
 		_, err = io.WriteString(w, "\n")
@@ -138,6 +154,8 @@ func (t *translator) translateNode(node parse.Node, w io.Writer, dot reflect.Typ
 		return t.translateScoped(w, dot, node.Type(), node.Pipe, node.List, node.ElseList)
 	case *parse.RangeNode:
 		return t.translateScoped(w, dot, node.Type(), node.Pipe, node.List, node.ElseList)
+	case *parse.TemplateNode:
+		return t.translateTemplate(w, dot, node)
 	default:
 		return fmt.Errorf("Unknown Node %s", node.Type())
 	}
@@ -163,6 +181,33 @@ func writeTruthiness(w io.Writer, kind reflect.Kind) error {
 	default:
 		return fmt.Errorf("Don't know how to evaluate %s", kind)
 	}
+}
+
+func (t *translator) translateTemplate(w io.Writer, dot reflect.Type, node *parse.TemplateNode) error {
+	io.WriteString(w, "{\ndot := ")
+	var (
+		typ reflect.Type
+		err error
+	)
+
+	typ, err = t.translatePipe(w, dot, node.Pipe)
+	if err != nil {
+		return err
+	}
+	io.WriteString(w, "\n")
+
+	// TODO(bouk): save compiled templates and emit functions so we can recurse and stuff
+	// t.templates[node.Name][typ]
+
+	oldScopes := t.scopes
+	t.scopes = []scope{make(scope)}
+	if err := t.translateNode(t.trees[node.Name].Root, w, typ); err != nil {
+		return err
+	}
+	t.scopes = oldScopes
+
+	io.WriteString(w, "}\n")
+	return nil
 }
 
 func (t *translator) translateScoped(w io.Writer, dot reflect.Type, nodeType parse.NodeType, pipe *parse.PipeNode, list, elseList *parse.ListNode) error {
@@ -233,7 +278,12 @@ func (t *translator) translateScoped(w io.Writer, dot reflect.Type, nodeType par
 }
 
 func (t *translator) translatePipe(w io.Writer, dot reflect.Type, pipe *parse.PipeNode) (reflect.Type, error) {
-	return t.translateCommand(w, dot, pipe.Cmds[len(pipe.Cmds)-1], pipe.Cmds[:len(pipe.Cmds)-1])
+	if pipe == nil {
+		io.WriteString(w, "nil")
+		return nil, nil
+	} else {
+		return t.translateCommand(w, dot, pipe.Cmds[len(pipe.Cmds)-1], pipe.Cmds[:len(pipe.Cmds)-1])
+	}
 }
 
 func GetFunctionName(i interface{}) string {
