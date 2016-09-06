@@ -256,8 +256,13 @@ func (t *translator) translateTemplate(w io.Writer, dot reflect.Type, node *pars
 			}
 		}
 
-		fmt.Fprintf(&buf, "// %s\n", node.Name)
-		fmt.Fprintf(&buf, "func %s(w io.Writer, dot %s) error {\n", name, typeName)
+		fmt.Fprintf(&buf, "// %s(", node.Name)
+		if typ == nil {
+			buf.WriteString("nil")
+		} else {
+			buf.WriteString(typeName)
+		}
+		fmt.Fprintf(&buf, ")\nfunc %s(w io.Writer, dot %s) error {\n", name, typeName)
 		oldScopes := t.scopes
 		t.scopes = []scope{make(scope)}
 		if err := t.translateNode(&buf, t.trees[node.Name].Root, typ); err != nil {

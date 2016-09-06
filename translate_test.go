@@ -133,13 +133,13 @@ func Name(w io.Writer, dot string) error {
   return nil
 }
 
-// T1
+// T1(nil)
 func fun1(w io.Writer, dot interface{}) error {
   _, _ = io.WriteString(w, "ONE")
   return nil
 }
 
-// T2
+// T2(nil)
 func fun2(w io.Writer, dot interface{}) error {
   _, _ = io.WriteString(w, "TWO ")
   if err := fun1(w, nil); err != nil {
@@ -148,7 +148,7 @@ func fun2(w io.Writer, dot interface{}) error {
   return nil
 }
 
-// T3
+// T3(nil)
 func fun0(w io.Writer, dot interface{}) error {
   if err := fun1(w, nil); err != nil {
     return err
@@ -171,7 +171,7 @@ func Name(w io.Writer, dot string) error {
   return nil
 }
 
-// T1
+// T1(nil)
 func fun0(w io.Writer, dot interface{}) error {
   if eval := dot; eval != nil {
     _, _ = io.WriteString(w, "TWO")
@@ -184,7 +184,7 @@ func fun0(w io.Writer, dot interface{}) error {
   return nil
 }
 
-// T1
+// T1(bool)
 func fun1(w io.Writer, dot bool) error {
   if eval := dot; eval {
     _, _ = io.WriteString(w, "TWO")
@@ -365,19 +365,19 @@ func Name(w io.Writer, dot *statictemplate.testStruct) error {
   return nil
 }
 
-// T1
+// T1(*statictemplate.testStruct)
 func fun1(w io.Writer, dot *statictemplate.testStruct) error {
   _, _ = fmt.Fprint(w, dot)
   return nil
 }
 
-// T1
+// T1(string)
 func fun3(w io.Writer, dot string) error {
   _, _ = io.WriteString(w, dot)
   return nil
 }
 
-// T2
+// T2(*statictemplate.testStruct)
 func fun2(w io.Writer, dot *statictemplate.testStruct) error {
   _, _ = io.WriteString(w, "TWO ")
   if err := fun3(w, dot.Hello()); err != nil {
@@ -386,7 +386,7 @@ func fun2(w io.Writer, dot *statictemplate.testStruct) error {
   return nil
 }
 
-// T3
+// T3(*statictemplate.testStruct)
 func fun0(w io.Writer, dot *statictemplate.testStruct) error {
   if err := fun1(w, dot); err != nil {
     return err
