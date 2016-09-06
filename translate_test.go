@@ -171,9 +171,9 @@ func Name(w io.Writer, dot string) error {
   return nil
 }
 
-// T1(nil)
-func fun0(w io.Writer, dot interface{}) error {
-  if eval := dot; eval != nil {
+// T1(bool)
+func fun1(w io.Writer, dot bool) error {
+  if eval := dot; eval {
     _, _ = io.WriteString(w, "TWO")
   } else {
     _, _ = io.WriteString(w, "ONE")
@@ -184,9 +184,9 @@ func fun0(w io.Writer, dot interface{}) error {
   return nil
 }
 
-// T1(bool)
-func fun1(w io.Writer, dot bool) error {
-  if eval := dot; eval {
+// T1(nil)
+func fun0(w io.Writer, dot interface{}) error {
+  if eval := dot; eval != nil {
     _, _ = io.WriteString(w, "TWO")
   } else {
     _, _ = io.WriteString(w, "ONE")
@@ -216,6 +216,10 @@ func (t *testStruct) Upcase(input string) string {
 
 func (t *testStruct) Recursive() *testStruct {
 	return t
+}
+
+func (t *testStruct) Bla() (int, error) {
+	return 1, nil
 }
 
 func TestComplexInput(t *testing.T) {
@@ -351,6 +355,19 @@ func Name(w io.Writer, dot *statictemplate.testStruct) error {
   _, _ = io.WriteString(w, dot.Upcase("whatup"))
   return nil
 }`, &testStruct{}},
+		{`{{ .Bla  }}`, `
+func Name(w io.Writer, dot *statictemplate.testStruct) error {
+  _, _ = fmt.Fprint(w, fun0(dot.Bla()))
+  return nil
+}
+
+func fun0(value int, err error) int {
+  if err != nil {
+    panic(err)
+  }
+  return value
+}
+`, &testStruct{}},
 		{`{{define "T1"}}{{ . }}{{end}}
 {{define "T2"}}TWO {{template "T1" .Hello}}{{end}}
 {{define "T3"}}{{template "T1" .}} {{template "T2" .}}{{end}}

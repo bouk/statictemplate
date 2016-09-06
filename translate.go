@@ -7,7 +7,6 @@ import (
 	"io"
 	"reflect"
 	"runtime"
-	"sort"
 	"text/template"
 	"text/template/parse"
 )
@@ -29,13 +28,9 @@ func Translate(name, text string, dot reflect.Type) (string, error) {
 		scopes: []scope{
 			make(scope),
 		},
-		specializedFunctions: make(map[string]map[reflect.Type]*compiledTemplate),
+		specializedFunctions: make(map[string]map[reflect.Type]string),
+		errorFunctions:       make(map[reflect.Type]string),
 	}).translate(name, text, dot)
-}
-
-type compiledTemplate struct {
-	code         string
-	functionName string
 }
 
 type translator struct {
@@ -43,7 +38,15 @@ type translator struct {
 	scopes               []scope
 	trees                map[string]*parse.Tree
 	id                   int
-	specializedFunctions map[string]map[reflect.Type]*compiledTemplate
+	specializedFunctions map[string]map[reflect.Type]string
+	errorFunctions       map[reflect.Type]string
+	generatedFunctions   []string
+}
+
+func (t *translator) generateFunctionName() string {
+	name := fmt.Sprintf("fun%d", t.id)
+	t.id++
+	return name
 }
 
 func (t *translator) pushScope() {
@@ -96,33 +99,16 @@ func (t *translator) translate(name, text string, dot reflect.Type) (string, err
 	}
 	tree := t.trees[name]
 
-	typeName := dot.Name()
-	if typeName == "" {
-		typeName = dot.String()
-	}
-
 	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "func %s(w io.Writer, dot %s) error {\n", name, typeName)
+	fmt.Fprintf(&buf, "func %s(w io.Writer, dot %s) error {\n", name, typName(dot))
 	if err := t.translateNode(&buf, tree.Root, dot); err != nil {
 		return "", err
 	}
 	fmt.Fprintf(&buf, "return nil\n}\n")
-	templateNames := []string{}
-	for name := range t.specializedFunctions {
-		templateNames = append(templateNames, name)
-	}
-	sort.Strings(templateNames)
-	for _, templateName := range templateNames {
-		funcs := t.specializedFunctions[templateName]
-		types := make(sortedTypes, 0, len(funcs))
-		for typ := range funcs {
-			types = append(types, typ)
-		}
-		sort.Sort(types)
-		for _, typ := range types {
-			io.WriteString(&buf, "\n")
-			io.WriteString(&buf, funcs[typ].code)
-		}
+
+	for _, code := range t.generatedFunctions {
+		io.WriteString(&buf, "\n")
+		io.WriteString(&buf, code)
 	}
 
 	formatted, err := format.Source(buf.Bytes())
@@ -231,29 +217,20 @@ func (t *translator) translateTemplate(w io.Writer, dot reflect.Type, node *pars
 		return err
 	}
 
-	// TODO(bouk): save compiled specializedFunctions and emit functions so we can recurse and stuff
 	funcs, ok := t.specializedFunctions[node.Name]
 	if !ok {
-		funcs = make(map[reflect.Type]*compiledTemplate)
+		funcs = make(map[reflect.Type]string)
 		t.specializedFunctions[node.Name] = funcs
 	}
-	compiled, ok := funcs[typ]
+	name, ok := funcs[typ]
 	if !ok {
-		name := fmt.Sprintf("fun%d", t.id)
-		t.id++
-
-		compiled = &compiledTemplate{
-			functionName: name,
-		}
-		funcs[typ] = compiled
+		name = t.generateFunctionName()
+		funcs[typ] = name
 
 		var buf bytes.Buffer
 		typeName := "interface{}"
 		if typ != nil {
-			typeName = typ.Name()
-			if typeName == "" {
-				typeName = typ.String()
-			}
+			typeName = typName(typ)
 		}
 
 		fmt.Fprintf(&buf, "// %s(", node.Name)
@@ -271,10 +248,10 @@ func (t *translator) translateTemplate(w io.Writer, dot reflect.Type, node *pars
 		t.scopes = oldScopes
 		buf.WriteString("return nil\n}\n")
 
-		compiled.code = buf.String()
+		t.generatedFunctions = append(t.generatedFunctions, buf.String())
 	}
 
-	_, err = fmt.Fprintf(w, "if err := %s(w, %s); err != nil {\nreturn err\n}\n", compiled.functionName, &buf)
+	_, err = fmt.Fprintf(w, "if err := %s(w, %s); err != nil {\nreturn err\n}\n", name, &buf)
 	return err
 }
 
@@ -436,7 +413,7 @@ func (t *translator) translateArg(w io.Writer, dot reflect.Type, arg parse.Node)
 		return t.translateFunction(w, dot, arg, nil, nil)
 	case *parse.PipeNode:
 		if len(arg.Decl) > 0 {
-			// TODO(bouk): do
+			// TODO(bouk): do (is it even possible?)
 			return nil, fmt.Errorf("Can't process inline variable assignment right now")
 		}
 		return t.translatePipe(w, dot, arg)
@@ -467,11 +444,12 @@ func (t *translator) translateArg(w io.Writer, dot reflect.Type, arg parse.Node)
 }
 
 func (t *translator) translateChain(w io.Writer, dot reflect.Type, node *parse.ChainNode, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
-	typ, err := t.translateArg(w, dot, node.Node)
+	var buf bytes.Buffer
+	typ, err := t.translateArg(&buf, dot, node.Node)
 	if err != nil {
 		return nil, err
 	}
-	return t.translateFieldChain(w, dot, typ, node.Field, args, nextCommands)
+	return t.translateFieldChain(w, dot, buf.String(), typ, node.Field, args, nextCommands)
 }
 
 func (t *translator) translateVariable(w io.Writer, dot reflect.Type, node *parse.VariableNode, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
@@ -483,58 +461,102 @@ func (t *translator) translateVariable(w io.Writer, dot reflect.Type, node *pars
 	if err != nil {
 		return nil, err
 	}
-	fmt.Fprintf(w, "%s%s", VarPrefix, ident)
-	return t.translateFieldChain(w, dot, typ, node.Ident[1:], args, nextCommands)
+
+	return t.translateFieldChain(w, dot, fmt.Sprintf("%s%s", VarPrefix, ident), typ, node.Ident[1:], args, nextCommands)
+}
+
+func (t *translator) generateErrorFunction(typ reflect.Type) string {
+	name, ok := t.errorFunctions[typ]
+	if !ok {
+		name = t.generateFunctionName()
+		typeName := typName(typ)
+
+		t.generatedFunctions = append(t.generatedFunctions, fmt.Sprintf(`
+func %s(value %s, err error) %s {
+	if err != nil {
+		panic(err)
+	}
+	return value
+}`, name, typeName, typeName))
+	}
+	return name
 }
 
 func (t *translator) translateFunction(w io.Writer, dot reflect.Type, ident *parse.IdentifierNode, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
 	f := t.funcs[ident.Ident]
 	typ := reflect.TypeOf(f)
-	// TODO(bouk): support err return value
-	if typ.NumOut() != 1 {
-		return nil, fmt.Errorf("Only support 1 output variable %s", GetFunctionName(f))
+	numOut := typ.NumOut()
+
+	if numOut == 2 {
+		fmt.Fprintf(w, "%s(", t.generateErrorFunction(typ))
+	} else if numOut != 1 {
+		return nil, fmt.Errorf("Only support 1, 2 output variable %s", GetFunctionName(f))
 	}
 
-	_, err := fmt.Fprint(w, GetFunctionName(f))
-	if err != nil {
+	if _, err := fmt.Fprint(w, GetFunctionName(f)); err != nil {
 		return nil, err
 	}
 
-	err = t.translateCall(w, dot, args, nextCommands)
-	return typ.Out(0), err
+	if err := t.translateCall(w, dot, args, nextCommands); err != nil {
+		return nil, err
+	}
+
+	if numOut == 2 {
+		io.WriteString(w, ")")
+	}
+
+	return typ.Out(0), nil
 }
 
 func (t *translator) translateField(w io.Writer, dot reflect.Type, field *parse.FieldNode, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
-	io.WriteString(w, "dot")
-	return t.translateFieldChain(w, dot, dot, field.Ident, args, nextCommands)
+	return t.translateFieldChain(w, dot, "dot", dot, field.Ident, args, nextCommands)
 }
 
-func (t *translator) translateFieldChain(w io.Writer, dot reflect.Type, typ reflect.Type, fields []string, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
+func (t *translator) translateFieldChain(w io.Writer, dot reflect.Type, dotCode string, typ reflect.Type, fields []string, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
+	var buf bytes.Buffer
+	guards := []string{}
 	for i, name := range fields {
 		if method, ok := typ.MethodByName(name); ok {
-			// TODO(bouk): support second err out
-			if method.Type.NumOut() != 1 {
-				return nil, fmt.Errorf("Only support single output argument %s", method.Name)
+			typ = method.Type.Out(0)
+			numOut := method.Type.NumOut()
+			if numOut == 2 {
+				guards = append(guards, fmt.Sprintf("%s(", t.generateErrorFunction(typ)))
+			} else if numOut != 1 {
+				return nil, fmt.Errorf("Only support 1, 2 output variable %s.%s", typName(typ), method.Name)
 			}
-			fmt.Fprintf(w, ".%s", name)
+			fmt.Fprintf(&buf, ".%s", name)
 
 			var err error
 			if i == len(fields)-1 {
-				err = t.translateCall(w, dot, args, nextCommands)
+				err = t.translateCall(&buf, dot, args, nextCommands)
 			} else {
-				err = t.translateCall(w, dot, nil, nil)
+				err = t.translateCall(&buf, dot, nil, nil)
 			}
 			if err != nil {
 				return nil, err
 			}
-
-			typ = method.Type.Out(0)
+			if numOut == 2 {
+				io.WriteString(&buf, ")")
+			}
 		} else if field, ok := typ.FieldByName(name); ok {
-			fmt.Fprintf(w, ".%s", name)
+			fmt.Fprintf(&buf, ".%s", name)
 			typ = field.Type
 		} else {
 			return nil, fmt.Errorf("Unknown field %s for type %s", name, typ.Name())
 		}
 	}
+	for i := len(guards) - 1; i >= 0; i-- {
+		io.WriteString(w, guards[i])
+	}
+	io.WriteString(w, dotCode)
+	buf.WriteTo(w)
 	return typ, nil
+}
+
+func typName(typ reflect.Type) string {
+	if name := typ.Name(); name == "" {
+		return typ.String()
+	} else {
+		return name
+	}
 }
