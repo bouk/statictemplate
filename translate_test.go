@@ -127,20 +127,71 @@ func Name(w io.Writer, dot string) error {
   _, _ = io.WriteString(w, "\n")
   _, _ = io.WriteString(w, "\n")
   _, _ = io.WriteString(w, "\n")
-  {
-    dot := nil
-    {
-      dot := nil
-      _, _ = io.WriteString(w, "ONE")
+  if err := fun0(w, nil); err != nil {
+    return err
+  }
+  return nil
+}
+
+// T1
+func fun1(w io.Writer, dot interface{}) error {
+  _, _ = io.WriteString(w, "ONE")
+  return nil
+}
+
+// T2
+func fun2(w io.Writer, dot interface{}) error {
+  _, _ = io.WriteString(w, "TWO ")
+  if err := fun1(w, nil); err != nil {
+    return err
+  }
+  return nil
+}
+
+// T3
+func fun0(w io.Writer, dot interface{}) error {
+  if err := fun1(w, nil); err != nil {
+    return err
+  }
+  _, _ = io.WriteString(w, " ")
+  if err := fun2(w, nil); err != nil {
+    return err
+  }
+  return nil
+}`},
+		{`
+{{define "T1"}}{{if .}}TWO{{else}}ONE{{template "T1" true}}{{end}}{{end}}
+{{template "T1"}}`, `
+func Name(w io.Writer, dot string) error {
+  _, _ = io.WriteString(w, "\n")
+  _, _ = io.WriteString(w, "\n")
+  if err := fun0(w, nil); err != nil {
+    return err
+  }
+  return nil
+}
+
+// T1
+func fun0(w io.Writer, dot interface{}) error {
+  if eval := dot; eval != nil {
+    _, _ = io.WriteString(w, "TWO")
+  } else {
+    _, _ = io.WriteString(w, "ONE")
+    if err := fun1(w, true); err != nil {
+      return err
     }
-    _, _ = io.WriteString(w, " ")
-    {
-      dot := nil
-      _, _ = io.WriteString(w, "TWO ")
-      {
-        dot := nil
-        _, _ = io.WriteString(w, "ONE")
-      }
+  }
+  return nil
+}
+
+// T1
+func fun1(w io.Writer, dot bool) error {
+  if eval := dot; eval {
+    _, _ = io.WriteString(w, "TWO")
+  } else {
+    _, _ = io.WriteString(w, "ONE")
+    if err := fun1(w, true); err != nil {
+      return err
     }
   }
   return nil
@@ -308,21 +359,41 @@ func Name(w io.Writer, dot *statictemplate.testStruct) error {
   _, _ = io.WriteString(w, "\n")
   _, _ = io.WriteString(w, "\n")
   _, _ = io.WriteString(w, "\n")
-  {
-    dot := dot
-    {
-      dot := dot
-      _, _ = fmt.Fprint(w, dot)
-    }
-    _, _ = io.WriteString(w, " ")
-    {
-      dot := dot
-      _, _ = io.WriteString(w, "TWO ")
-      {
-        dot := dot.Hello()
-        _, _ = io.WriteString(w, dot)
-      }
-    }
+  if err := fun0(w, dot); err != nil {
+    return err
+  }
+  return nil
+}
+
+// T1
+func fun1(w io.Writer, dot *statictemplate.testStruct) error {
+  _, _ = fmt.Fprint(w, dot)
+  return nil
+}
+
+// T1
+func fun3(w io.Writer, dot string) error {
+  _, _ = io.WriteString(w, dot)
+  return nil
+}
+
+// T2
+func fun2(w io.Writer, dot *statictemplate.testStruct) error {
+  _, _ = io.WriteString(w, "TWO ")
+  if err := fun3(w, dot.Hello()); err != nil {
+    return err
+  }
+  return nil
+}
+
+// T3
+func fun0(w io.Writer, dot *statictemplate.testStruct) error {
+  if err := fun1(w, dot); err != nil {
+    return err
+  }
+  _, _ = io.WriteString(w, " ")
+  if err := fun2(w, dot); err != nil {
+    return err
   }
   return nil
 }`, &testStruct{}},

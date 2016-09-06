@@ -7,6 +7,7 @@ import (
 	"io"
 	"reflect"
 	"runtime"
+	"sort"
 	"text/template"
 	"text/template/parse"
 )
@@ -28,7 +29,7 @@ func Translate(name, text string, dot reflect.Type) (string, error) {
 		scopes: []scope{
 			make(scope),
 		},
-		// templates: make(map[string][reflect.Type]*compiledTemplate),
+		specializedFunctions: make(map[string]map[reflect.Type]*compiledTemplate),
 	}).translate(name, text, dot)
 }
 
@@ -38,10 +39,11 @@ type compiledTemplate struct {
 }
 
 type translator struct {
-	funcs  template.FuncMap
-	scopes []scope
-	trees  map[string]*parse.Tree
-	// templates map[string][reflect.Type]*compiledTemplate
+	funcs                template.FuncMap
+	scopes               []scope
+	trees                map[string]*parse.Tree
+	id                   int
+	specializedFunctions map[string]map[reflect.Type]*compiledTemplate
 }
 
 func (t *translator) pushScope() {
@@ -72,6 +74,20 @@ func (t *translator) findVariable(name string) (reflect.Type, error) {
 	return nil, fmt.Errorf("Can't find variable %s in scope", name)
 }
 
+type sortedTypes []reflect.Type
+
+func (a sortedTypes) Len() int      { return len(a) }
+func (a sortedTypes) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a sortedTypes) Less(i, j int) bool {
+	if a[i] == nil {
+		return true
+	} else if a[j] == nil {
+		return false
+	} else {
+		return a[i].String() < a[j].String()
+	}
+}
+
 func (t *translator) translate(name, text string, dot reflect.Type) (string, error) {
 	var err error
 	t.trees, err = parse.Parse(name, text, "", "", t.funcs)
@@ -87,10 +103,27 @@ func (t *translator) translate(name, text string, dot reflect.Type) (string, err
 
 	var buf bytes.Buffer
 	fmt.Fprintf(&buf, "func %s(w io.Writer, dot %s) error {\n", name, typeName)
-	if err := t.translateNode(tree.Root, &buf, dot); err != nil {
+	if err := t.translateNode(&buf, tree.Root, dot); err != nil {
 		return "", err
 	}
-	fmt.Fprintf(&buf, "return nil\n}")
+	fmt.Fprintf(&buf, "return nil\n}\n")
+	templateNames := []string{}
+	for name := range t.specializedFunctions {
+		templateNames = append(templateNames, name)
+	}
+	sort.Strings(templateNames)
+	for _, templateName := range templateNames {
+		funcs := t.specializedFunctions[templateName]
+		types := make(sortedTypes, 0, len(funcs))
+		for typ := range funcs {
+			types = append(types, typ)
+		}
+		sort.Sort(types)
+		for _, typ := range types {
+			io.WriteString(&buf, "\n")
+			io.WriteString(&buf, funcs[typ].code)
+		}
+	}
 
 	formatted, err := format.Source(buf.Bytes())
 	if err != nil {
@@ -99,11 +132,11 @@ func (t *translator) translate(name, text string, dot reflect.Type) (string, err
 	return string(formatted), nil
 }
 
-func (t *translator) translateNode(node parse.Node, w io.Writer, dot reflect.Type) error {
+func (t *translator) translateNode(w io.Writer, node parse.Node, dot reflect.Type) error {
 	switch node := node.(type) {
 	case *parse.ListNode:
 		for _, item := range node.Nodes {
-			if err := t.translateNode(item, w, dot); err != nil {
+			if err := t.translateNode(w, item, dot); err != nil {
 				return err
 			}
 		}
@@ -161,8 +194,12 @@ func (t *translator) translateNode(node parse.Node, w io.Writer, dot reflect.Typ
 	}
 }
 
-func writeTruthiness(w io.Writer, kind reflect.Kind) error {
-	switch kind {
+func writeTruthiness(w io.Writer, typ reflect.Type) error {
+	if typ == nil {
+		_, err := io.WriteString(w, "eval != nil")
+		return err
+	}
+	switch typ.Kind() {
 	case reflect.String, reflect.Array, reflect.Map, reflect.Slice:
 		_, err := io.WriteString(w, "len(eval) != 0")
 		return err
@@ -179,35 +216,61 @@ func writeTruthiness(w io.Writer, kind reflect.Kind) error {
 		_, err := io.WriteString(w, "eval != 0")
 		return err
 	default:
-		return fmt.Errorf("Don't know how to evaluate %s", kind)
+		return fmt.Errorf("Don't know how to evaluate %s", typ)
 	}
 }
 
 func (t *translator) translateTemplate(w io.Writer, dot reflect.Type, node *parse.TemplateNode) error {
-	io.WriteString(w, "{\ndot := ")
 	var (
 		typ reflect.Type
 		err error
 	)
-
-	typ, err = t.translatePipe(w, dot, node.Pipe)
+	var buf bytes.Buffer
+	typ, err = t.translatePipe(&buf, dot, node.Pipe)
 	if err != nil {
 		return err
 	}
-	io.WriteString(w, "\n")
 
-	// TODO(bouk): save compiled templates and emit functions so we can recurse and stuff
-	// t.templates[node.Name][typ]
-
-	oldScopes := t.scopes
-	t.scopes = []scope{make(scope)}
-	if err := t.translateNode(t.trees[node.Name].Root, w, typ); err != nil {
-		return err
+	// TODO(bouk): save compiled specializedFunctions and emit functions so we can recurse and stuff
+	funcs, ok := t.specializedFunctions[node.Name]
+	if !ok {
+		funcs = make(map[reflect.Type]*compiledTemplate)
+		t.specializedFunctions[node.Name] = funcs
 	}
-	t.scopes = oldScopes
+	compiled, ok := funcs[typ]
+	if !ok {
+		name := fmt.Sprintf("fun%d", t.id)
+		t.id++
 
-	io.WriteString(w, "}\n")
-	return nil
+		compiled = &compiledTemplate{
+			functionName: name,
+		}
+		funcs[typ] = compiled
+
+		var buf bytes.Buffer
+		typeName := "interface{}"
+		if typ != nil {
+			typeName = typ.Name()
+			if typeName == "" {
+				typeName = typ.String()
+			}
+		}
+
+		fmt.Fprintf(&buf, "// %s\n", node.Name)
+		fmt.Fprintf(&buf, "func %s(w io.Writer, dot %s) error {\n", name, typeName)
+		oldScopes := t.scopes
+		t.scopes = []scope{make(scope)}
+		if err := t.translateNode(&buf, t.trees[node.Name].Root, typ); err != nil {
+			return err
+		}
+		t.scopes = oldScopes
+		buf.WriteString("return nil\n}\n")
+
+		compiled.code = buf.String()
+	}
+
+	_, err = fmt.Fprintf(w, "if err := %s(w, %s); err != nil {\nreturn err\n}\n", compiled.functionName, &buf)
+	return err
 }
 
 func (t *translator) translateScoped(w io.Writer, dot reflect.Type, nodeType parse.NodeType, pipe *parse.PipeNode, list, elseList *parse.ListNode) error {
@@ -217,7 +280,7 @@ func (t *translator) translateScoped(w io.Writer, dot reflect.Type, nodeType par
 		return err
 	}
 	io.WriteString(w, "; ")
-	if err := writeTruthiness(w, typ.Kind()); err != nil {
+	if err := writeTruthiness(w, typ); err != nil {
 		return err
 	}
 	io.WriteString(w, "{\n")
@@ -256,7 +319,7 @@ func (t *translator) translateScoped(w io.Writer, dot reflect.Type, nodeType par
 		}
 	}
 
-	if err := t.translateNode(list, w, dot); err != nil {
+	if err := t.translateNode(w, list, dot); err != nil {
 		return err
 	}
 
@@ -268,7 +331,7 @@ func (t *translator) translateScoped(w io.Writer, dot reflect.Type, nodeType par
 	io.WriteString(w, "}")
 	if elseList != nil {
 		io.WriteString(w, " else {\n")
-		if err := t.translateNode(elseList, w, dot); err != nil {
+		if err := t.translateNode(w, elseList, dot); err != nil {
 			return err
 		}
 		io.WriteString(w, "}")
@@ -421,14 +484,15 @@ func (t *translator) translateVariable(w io.Writer, dot reflect.Type, node *pars
 
 func (t *translator) translateFunction(w io.Writer, dot reflect.Type, ident *parse.IdentifierNode, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
 	f := t.funcs[ident.Ident]
-	_, err := fmt.Fprint(w, GetFunctionName(f))
-	if err != nil {
-		return nil, err
-	}
 	typ := reflect.TypeOf(f)
 	// TODO(bouk): support err return value
 	if typ.NumOut() != 1 {
 		return nil, fmt.Errorf("Only support 1 output variable %s", GetFunctionName(f))
+	}
+
+	_, err := fmt.Fprint(w, GetFunctionName(f))
+	if err != nil {
+		return nil, err
 	}
 
 	err = t.translateCall(w, dot, args, nextCommands)
