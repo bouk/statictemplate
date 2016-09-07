@@ -11,6 +11,8 @@ import (
 	"strings"
 	"text/template"
 	"text/template/parse"
+
+	"github.com/bouk/statictemplate/funcs"
 )
 
 const VarPrefix = "_Var"
@@ -19,14 +21,7 @@ type scope map[string]reflect.Type
 
 func Translate(pkg, name, text string, dot reflect.Type) (string, error) {
 	return (&translator{
-		funcs: map[string]interface{}{
-			"print":    fmt.Sprint,
-			"printf":   fmt.Sprintf,
-			"println":  fmt.Sprintln,
-			"html":     template.HTMLEscaper,
-			"js":       template.JSEscaper,
-			"urlquery": template.URLQueryEscaper,
-		},
+		funcs: map[string]interface{}{},
 		scopes: []scope{
 			make(scope),
 		},
@@ -58,6 +53,8 @@ func (t *translator) importPackage(name string) string {
 		pkg = name
 	case "text/template":
 		pkg = "template"
+	case "github.com/bouk/statictemplate/funcs":
+		pkg = "funcs"
 	default:
 		pkg = fmt.Sprintf("pkg%d", t.id)
 		t.id++
@@ -391,10 +388,6 @@ func (t *translator) translatePipe(w io.Writer, dot reflect.Type, pipe *parse.Pi
 	}
 }
 
-func GetFunctionName(i interface{}) string {
-	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
-}
-
 func (t *translator) translateCall(w io.Writer, dot reflect.Type, args []parse.Node, nextCommands []*parse.CommandNode) error {
 	io.WriteString(w, "(")
 	for i, arg := range args {
@@ -542,21 +535,36 @@ func %s(value %s, err error) %s {
 	return name
 }
 
+func (t *translator) getFunction(ident string) (reflect.Type, string, error) {
+	if f, ok := t.funcs[ident]; ok {
+		fName := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
+		strs := strings.SplitN(fName, ".", 2)
+		pkgName := t.importPackage(strs[0])
+		return reflect.TypeOf(f), fmt.Sprintf("%s.%s", pkgName, strs[1]), nil
+	} else if fType, ok := funcs.Funcs[ident]; ok {
+		packageName := t.importPackage("github.com/bouk/statictemplate/funcs")
+		return reflect.TypeOf(fType), fmt.Sprintf("%s.%s", packageName, strings.Title(ident)), nil
+	} else {
+		return nil, "", fmt.Errorf("Unknown function %s", ident)
+	}
+}
+
 func (t *translator) translateFunction(w io.Writer, dot reflect.Type, ident *parse.IdentifierNode, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
-	f := t.funcs[ident.Ident]
-	typ := reflect.TypeOf(f)
+	// TODO(bouk): generate function name from builtin funcs
+	typ, fName, err := t.getFunction(ident.Ident)
+	if err != nil {
+		return nil, err
+	}
+
 	numOut := typ.NumOut()
 
 	if numOut == 2 {
 		fmt.Fprintf(w, "%s(", t.generateErrorFunction(typ))
 	} else if numOut != 1 {
-		return nil, fmt.Errorf("Only support 1, 2 output variable %s", GetFunctionName(f))
+		return nil, fmt.Errorf("Only support 1, 2 output variable %s", ident.Ident)
 	}
-	strs := strings.SplitN(GetFunctionName(f), ".", 2)
-	pkgName := t.importPackage(strs[0])
-	if _, err := fmt.Fprintf(w, "%s.%s", pkgName, strs[1]); err != nil {
-		return nil, err
-	}
+
+	io.WriteString(w, fName)
 
 	if err := t.translateCall(w, dot, args, nextCommands); err != nil {
 		return nil, err

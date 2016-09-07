@@ -93,7 +93,7 @@ func fun0(w io.Writer, dot string) error {
 package main
 
 import (
-  "fmt"
+  "github.com/bouk/statictemplate/funcs"
   "io"
 )
 
@@ -111,7 +111,32 @@ func Name(w io.Writer, dot string) (err error) {
 
 // Name(string)
 func fun0(w io.Writer, dot string) error {
-  _, _ = io.WriteString(w, fmt.Sprint(fmt.Sprint("hi")))
+  _, _ = io.WriteString(w, funcs.Print(funcs.Print("hi")))
+  return nil
+}`},
+		{`{{ printf "%d" (or 0 1) }}`, `
+package main
+
+import (
+  "github.com/bouk/statictemplate/funcs"
+  "io"
+)
+
+func Name(w io.Writer, dot string) (err error) {
+  defer func() {
+    if recovered := recover(); recovered != nil {
+      var ok bool
+      if err, ok = recovered.(error); !ok {
+        panic(recovered)
+      }
+    }
+  }()
+  return fun0(w, dot)
+}
+
+// Name(string)
+func fun0(w io.Writer, dot string) error {
+  _, _ = io.WriteString(w, funcs.Printf("%d", funcs.Or(0, 1)))
   return nil
 }`},
 		{`{{ 1 }}`, `
@@ -321,7 +346,7 @@ func fun0(w io.Writer, dot string) error {
 package main
 
 import (
-  "fmt"
+  "github.com/bouk/statictemplate/funcs"
   "io"
 )
 
@@ -339,14 +364,14 @@ func Name(w io.Writer, dot string) (err error) {
 
 // Name(string)
 func fun0(w io.Writer, dot string) error {
-  _, _ = io.WriteString(w, fmt.Sprint("hi"))
+  _, _ = io.WriteString(w, funcs.Print("hi"))
   return nil
 }`},
 		{`{{ ( "hi" | printf "%v" ) | print }}`, `
 package main
 
 import (
-  "fmt"
+  "github.com/bouk/statictemplate/funcs"
   "io"
 )
 
@@ -364,14 +389,14 @@ func Name(w io.Writer, dot string) (err error) {
 
 // Name(string)
 func fun0(w io.Writer, dot string) error {
-  _, _ = io.WriteString(w, fmt.Sprint(fmt.Sprintf("%v", "hi")))
+  _, _ = io.WriteString(w, funcs.Print(funcs.Printf("%v", "hi")))
   return nil
 }`},
 		{`{{ ( "hi" | print ) | printf "%v" }}`, `
 package main
 
 import (
-  "fmt"
+  "github.com/bouk/statictemplate/funcs"
   "io"
 )
 
@@ -389,14 +414,14 @@ func Name(w io.Writer, dot string) (err error) {
 
 // Name(string)
 func fun0(w io.Writer, dot string) error {
-  _, _ = io.WriteString(w, fmt.Sprintf("%v", fmt.Sprint("hi")))
+  _, _ = io.WriteString(w, funcs.Printf("%v", funcs.Print("hi")))
   return nil
 }`},
 		{`{{ "hi" | print | print }}`, `
 package main
 
 import (
-  "fmt"
+  "github.com/bouk/statictemplate/funcs"
   "io"
 )
 
@@ -414,15 +439,15 @@ func Name(w io.Writer, dot string) (err error) {
 
 // Name(string)
 func fun0(w io.Writer, dot string) error {
-  _, _ = io.WriteString(w, fmt.Sprint(fmt.Sprint("hi")))
+  _, _ = io.WriteString(w, funcs.Print(funcs.Print("hi")))
   return nil
 }`},
 		{`{{ "<wow>" | html }}`, `
 package main
 
 import (
+  "github.com/bouk/statictemplate/funcs"
   "io"
-  "text/template"
 )
 
 func Name(w io.Writer, dot string) (err error) {
@@ -439,7 +464,7 @@ func Name(w io.Writer, dot string) (err error) {
 
 // Name(string)
 func fun0(w io.Writer, dot string) error {
-  _, _ = io.WriteString(w, template.HTMLEscaper("<wow>"))
+  _, _ = io.WriteString(w, funcs.Html("<wow>"))
   return nil
 }`},
 		{`{{ if true }}a{{end}}`, `
@@ -756,7 +781,7 @@ func fun0(w io.Writer, dot []string) error {
 package main
 
 import (
-  "fmt"
+  "github.com/bouk/statictemplate/funcs"
   "io"
 )
 
@@ -774,7 +799,7 @@ func Name(w io.Writer, dot struct{ A string }) (err error) {
 
 // Name(struct { A string })
 func fun0(w io.Writer, dot struct{ A string }) error {
-  _, _ = io.WriteString(w, fmt.Sprint(dot.A))
+  _, _ = io.WriteString(w, funcs.Print(dot.A))
   return nil
 }`, struct{ A string }{""}},
 		{"{{ (.).A }}", `
@@ -1034,8 +1059,8 @@ func fun0(w io.Writer, dot *pkg1.testStruct) error {
 package main
 
 import (
-  "fmt"
   pkg1 "github.com/bouk/statictemplate"
+  "github.com/bouk/statictemplate/funcs"
   "io"
 )
 
@@ -1053,7 +1078,7 @@ func Name(w io.Writer, dot *pkg1.testStruct) (err error) {
 
 // Name(*pkg1.testStruct)
 func fun0(w io.Writer, dot *pkg1.testStruct) error {
-  _, _ = io.WriteString(w, fmt.Sprintf("%q", dot.Hello()))
+  _, _ = io.WriteString(w, funcs.Printf("%q", dot.Hello()))
   return nil
 }`, &testStruct{}},
 		{`{{ .Upcase "whatup" }}`, `
