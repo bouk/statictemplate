@@ -615,8 +615,17 @@ func (t *translator) translateFieldChain(w io.Writer, dot reflect.Type, dotCode 
 }
 
 func (t *translator) typeName(typ reflect.Type) string {
-	if typ.Kind() == reflect.Ptr {
+	switch typ.Kind() {
+	case reflect.Ptr:
 		return fmt.Sprintf("*%s", t.typeName(typ.Elem()))
+	case reflect.Slice:
+		return fmt.Sprintf("[]%s", t.typeName(typ.Elem()))
+	case reflect.Map:
+		return fmt.Sprintf("map[%s]%s", t.typeName(typ.Key()), t.typeName(typ.Elem()))
+	case reflect.Chan:
+		return fmt.Sprintf("chan %s", t.typeName(typ.Elem()))
+	case reflect.Array:
+		return fmt.Sprintf("[%s]%s", typ.Len(), t.typeName(typ.Elem()))
 	}
 	pkg := typ.PkgPath()
 	if pkg != "" {
