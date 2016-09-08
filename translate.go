@@ -308,7 +308,9 @@ func (t *translator) translateTemplate(w io.Writer, dot reflect.Type, node *pars
 		return err
 	}
 
-	_, err = fmt.Fprintf(w, "if err := %s(w, %s); err != nil {\nreturn err\n}\n", name, &buf)
+	fmt.Fprintf(w, "if err := %s(w, ", name)
+	buf.WriteTo(w)
+	_, err = io.WriteString(w, "); err != nil {\nreturn err\n}\n")
 	return err
 }
 
@@ -502,7 +504,7 @@ func (t *translator) translateChain(w io.Writer, dot reflect.Type, node *parse.C
 	if err != nil {
 		return nil, err
 	}
-	return t.translateFieldChain(w, dot, buf.String(), typ, node.Field, args, nextCommands)
+	return t.translateFieldChain(w, dot, &buf, typ, node.Field, args, nextCommands)
 }
 
 func (t *translator) translateVariable(w io.Writer, dot reflect.Type, node *parse.VariableNode, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
@@ -515,7 +517,7 @@ func (t *translator) translateVariable(w io.Writer, dot reflect.Type, node *pars
 		return nil, err
 	}
 
-	return t.translateFieldChain(w, dot, fmt.Sprintf("%s%s", VarPrefix, ident), typ, node.Ident[1:], args, nextCommands)
+	return t.translateFieldChain(w, dot, constantWriterTo(VarPrefix+ident), typ, node.Ident[1:], args, nextCommands)
 }
 
 func (t *translator) generateErrorFunction(typ reflect.Type) string {
@@ -550,7 +552,6 @@ func (t *translator) getFunction(ident string) (reflect.Type, string, error) {
 }
 
 func (t *translator) translateFunction(w io.Writer, dot reflect.Type, ident *parse.IdentifierNode, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
-	// TODO(bouk): generate function name from builtin funcs
 	typ, fName, err := t.getFunction(ident.Ident)
 	if err != nil {
 		return nil, err
@@ -578,10 +579,10 @@ func (t *translator) translateFunction(w io.Writer, dot reflect.Type, ident *par
 }
 
 func (t *translator) translateField(w io.Writer, dot reflect.Type, field *parse.FieldNode, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
-	return t.translateFieldChain(w, dot, "dot", dot, field.Ident, args, nextCommands)
+	return t.translateFieldChain(w, dot, constantWriterTo("dot"), dot, field.Ident, args, nextCommands)
 }
 
-func (t *translator) translateFieldChain(w io.Writer, dot reflect.Type, dotCode string, typ reflect.Type, fields []string, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
+func (t *translator) translateFieldChain(w io.Writer, dot reflect.Type, dotCode io.WriterTo, typ reflect.Type, fields []string, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
 	var buf bytes.Buffer
 	guards := []string{}
 	for i, name := range fields {
@@ -617,9 +618,12 @@ func (t *translator) translateFieldChain(w io.Writer, dot reflect.Type, dotCode 
 	for i := len(guards) - 1; i >= 0; i-- {
 		io.WriteString(w, guards[i])
 	}
-	io.WriteString(w, dotCode)
-	buf.WriteTo(w)
-	return typ, nil
+	_, err := dotCode.WriteTo(w)
+	if err != nil {
+		return nil, err
+	}
+	_, err = buf.WriteTo(w)
+	return typ, err
 }
 
 func (t *translator) typeName(typ reflect.Type) string {
@@ -633,7 +637,7 @@ func (t *translator) typeName(typ reflect.Type) string {
 	case reflect.Chan:
 		return fmt.Sprintf("chan %s", t.typeName(typ.Elem()))
 	case reflect.Array:
-		return fmt.Sprintf("[%s]%s", typ.Len(), t.typeName(typ.Elem()))
+		return fmt.Sprintf("[%d]%s", typ.Len(), t.typeName(typ.Elem()))
 	}
 	pkg := typ.PkgPath()
 	if pkg != "" {
