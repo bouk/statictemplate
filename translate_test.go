@@ -8,8 +8,8 @@ import (
 	"text/template"
 )
 
-func equalish(t *testing.T, a, b, input string) {
-	assert.Equal(t, strings.Replace(strings.TrimSpace(a), "\t", "  ", -1), strings.Replace(strings.TrimSpace(b), "\t", "  ", -1), input)
+func equalish(t *testing.T, a string, b []byte, input string) {
+	assert.Equal(t, strings.Replace(strings.TrimSpace(a), "\t", "  ", -1), strings.Replace(strings.TrimSpace(string(b)), "\t", "  ", -1), input)
 }
 
 func TestTranslate(t *testing.T) {
@@ -35,7 +35,7 @@ func Name(w io.Writer, dot string) (err error) {
   return fun0(w, dot)
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _, _ = io.WriteString(w, "hello")
   return nil
@@ -59,7 +59,7 @@ func Name(w io.Writer, dot string) (err error) {
   return fun0(w, dot)
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _, _ = io.WriteString(w, "hi")
   _, _ = io.WriteString(w, "there")
@@ -84,7 +84,7 @@ func Name(w io.Writer, dot string) (err error) {
   return fun0(w, dot)
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _, _ = io.WriteString(w, "hi")
   return nil
@@ -109,7 +109,7 @@ func Name(w io.Writer, dot string) (err error) {
   return fun0(w, dot)
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _, _ = io.WriteString(w, funcs.Print(funcs.Print("hi")))
   return nil
@@ -134,7 +134,7 @@ func Name(w io.Writer, dot string) (err error) {
   return fun0(w, dot)
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _, _ = io.WriteString(w, funcs.Printf("%d", funcs.Or(0, 1)))
   return nil
@@ -159,7 +159,7 @@ func Name(w io.Writer, dot string) (err error) {
   return fun0(w, dot)
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _, _ = fmt.Fprint(w, 1)
   return nil
@@ -183,7 +183,7 @@ func Name(w io.Writer, dot string) (err error) {
   return fun0(w, dot)
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _, _ = io.WriteString(w, dot)
   return nil
@@ -208,7 +208,7 @@ func Name(w io.Writer, dot string) (err error) {
   return fun0(w, dot)
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _, _ = fmt.Fprint(w, true)
   return nil
@@ -233,7 +233,7 @@ func Name(w io.Writer, dot string) (err error) {
   return fun0(w, dot)
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _, _ = fmt.Fprint(w, false)
   return nil
@@ -258,7 +258,7 @@ func Name(w io.Writer, dot string) (err error) {
   return fun0(w, dot)
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _Vara := 1
   _, _ = fmt.Fprint(w, _Vara)
@@ -283,7 +283,7 @@ func Name(w io.Writer, dot string) (err error) {
   return fun0(w, dot)
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _Vara := "hey"
   _, _ = io.WriteString(w, _Vara)
@@ -308,7 +308,7 @@ func Name(w io.Writer, dot string) (err error) {
   return fun0(w, dot)
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _Vara := 1
   _Vara = 2
@@ -333,7 +333,7 @@ func Name(w io.Writer, dot string) (err error) {
   return fun0(w, dot)
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _Vara := 1
   if eval := dot; len(eval) != 0 {
@@ -362,7 +362,7 @@ func Name(w io.Writer, dot string) (err error) {
   return fun0(w, dot)
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _, _ = io.WriteString(w, funcs.Print("hi"))
   return nil
@@ -387,7 +387,7 @@ func Name(w io.Writer, dot string) (err error) {
   return fun0(w, dot)
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _, _ = io.WriteString(w, funcs.Print(funcs.Printf("%v", "hi")))
   return nil
@@ -412,7 +412,7 @@ func Name(w io.Writer, dot string) (err error) {
   return fun0(w, dot)
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _, _ = io.WriteString(w, funcs.Printf("%v", funcs.Print("hi")))
   return nil
@@ -437,7 +437,7 @@ func Name(w io.Writer, dot string) (err error) {
   return fun0(w, dot)
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _, _ = io.WriteString(w, funcs.Print(funcs.Print("hi")))
   return nil
@@ -462,7 +462,7 @@ func Name(w io.Writer, dot string) (err error) {
   return fun0(w, dot)
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _, _ = io.WriteString(w, funcs.Html("<wow>"))
   return nil
@@ -486,7 +486,7 @@ func Name(w io.Writer, dot string) (err error) {
   return fun0(w, dot)
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   if eval := true; eval {
     _, _ = io.WriteString(w, "a")
@@ -512,7 +512,7 @@ func Name(w io.Writer, dot string) (err error) {
   return fun0(w, dot)
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   if eval := true; eval {
     _, _ = io.WriteString(w, "a")
@@ -570,7 +570,7 @@ func fun1(w io.Writer, dot interface{}) error {
   return nil
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _, _ = io.WriteString(w, "\n")
   _, _ = io.WriteString(w, "\n")
@@ -627,7 +627,7 @@ func fun1(w io.Writer, dot interface{}) error {
   return nil
 }
 
-// Name(string)
+// template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _, _ = io.WriteString(w, "\n")
   _, _ = io.WriteString(w, "\n")
@@ -637,7 +637,10 @@ func fun0(w io.Writer, dot string) error {
   return nil
 }`},
 	} {
-		actual, err := Translate("main", "Name", c.input, reflect.TypeOf(""))
+		temp := template.Must(template.New("template.tmpl").Parse(c.input))
+		actual, err := Translate(temp, "main", []TranslateInstruction{
+			{"Name", "template.tmpl", reflect.TypeOf("")},
+		})
 		if assert.NoError(t, err, c.input) {
 			equalish(t, c.expected, actual, c.input)
 		}
@@ -686,7 +689,7 @@ func Name(w io.Writer, dot struct{ A string }) (err error) {
   return fun0(w, dot)
 }
 
-// Name(struct { A string })
+// template.tmpl(struct { A string })
 func fun0(w io.Writer, dot struct{ A string }) error {
   _, _ = io.WriteString(w, dot.A)
   return nil
@@ -710,7 +713,7 @@ func Name(w io.Writer, dot []string) (err error) {
   return fun0(w, dot)
 }
 
-// Name([]string)
+// template.tmpl([]string)
 func fun0(w io.Writer, dot []string) error {
   if eval := dot; len(eval) != 0 {
     for range eval {
@@ -738,7 +741,7 @@ func Name(w io.Writer, dot []string) (err error) {
   return fun0(w, dot)
 }
 
-// Name([]string)
+// template.tmpl([]string)
 func fun0(w io.Writer, dot []string) error {
   if eval := dot; len(eval) != 0 {
     for _, _Vara := range eval {
@@ -767,7 +770,7 @@ func Name(w io.Writer, dot []string) (err error) {
   return fun0(w, dot)
 }
 
-// Name([]string)
+// template.tmpl([]string)
 func fun0(w io.Writer, dot []string) error {
   if eval := dot; len(eval) != 0 {
     for _Vari, _Vara := range eval {
@@ -797,7 +800,7 @@ func Name(w io.Writer, dot struct{ A string }) (err error) {
   return fun0(w, dot)
 }
 
-// Name(struct { A string })
+// template.tmpl(struct { A string })
 func fun0(w io.Writer, dot struct{ A string }) error {
   _, _ = io.WriteString(w, funcs.Print(dot.A))
   return nil
@@ -821,7 +824,7 @@ func Name(w io.Writer, dot struct{ A string }) (err error) {
   return fun0(w, dot)
 }
 
-// Name(struct { A string })
+// template.tmpl(struct { A string })
 func fun0(w io.Writer, dot struct{ A string }) error {
   _, _ = io.WriteString(w, dot.A)
   return nil
@@ -845,7 +848,7 @@ func Name(w io.Writer, dot struct{ A string }) (err error) {
   return fun0(w, dot)
 }
 
-// Name(struct { A string })
+// template.tmpl(struct { A string })
 func fun0(w io.Writer, dot struct{ A string }) error {
   _, _ = io.WriteString(w, dot.A)
   return nil
@@ -870,7 +873,7 @@ func Name(w io.Writer, dot struct{ A string }) (err error) {
   return fun0(w, dot)
 }
 
-// Name(struct { A string })
+// template.tmpl(struct { A string })
 func fun0(w io.Writer, dot struct{ A string }) error {
   if eval := dot.A; len(eval) != 0 {
     dot := eval
@@ -904,7 +907,7 @@ func Name(w io.Writer, dot struct{ A bool }) (err error) {
   return fun0(w, dot)
 }
 
-// Name(struct { A bool })
+// template.tmpl(struct { A bool })
 func fun0(w io.Writer, dot struct{ A bool }) error {
   if eval := dot.A; eval {
     dot := eval
@@ -938,7 +941,7 @@ func Name(w io.Writer, dot struct{ A []int }) (err error) {
   return fun0(w, dot)
 }
 
-// Name(struct { A []int })
+// template.tmpl(struct { A []int })
 func fun0(w io.Writer, dot struct{ A []int }) error {
   if eval := dot.A; len(eval) != 0 {
     dot := eval
@@ -972,7 +975,7 @@ func Name(w io.Writer, dot struct{ A []int }) (err error) {
   return fun0(w, dot)
 }
 
-// Name(struct { A []int })
+// template.tmpl(struct { A []int })
 func fun0(w io.Writer, dot struct{ A []int }) error {
   if eval := dot.A; len(eval) != 0 {
     _Varb := eval
@@ -1000,7 +1003,7 @@ func Name(w io.Writer, dot *pkg1.testStruct) (err error) {
   return fun0(w, dot)
 }
 
-// Name(*pkg1.testStruct)
+// template.tmpl(*pkg1.testStruct)
 func fun0(w io.Writer, dot *pkg1.testStruct) error {
   _, _ = io.WriteString(w, dot.Hello())
   return nil
@@ -1025,7 +1028,7 @@ func Name(w io.Writer, dot *pkg1.testStruct) (err error) {
   return fun0(w, dot)
 }
 
-// Name(*pkg1.testStruct)
+// template.tmpl(*pkg1.testStruct)
 func fun0(w io.Writer, dot *pkg1.testStruct) error {
   _, _ = io.WriteString(w, dot.Recursive().Recursive().Recursive().Upcase("whatup"))
   return nil
@@ -1050,7 +1053,7 @@ func Name(w io.Writer, dot *pkg1.testStruct) (err error) {
   return fun0(w, dot)
 }
 
-// Name(*pkg1.testStruct)
+// template.tmpl(*pkg1.testStruct)
 func fun0(w io.Writer, dot *pkg1.testStruct) error {
   _, _ = io.WriteString(w, dot.Recursive().Recursive().Recursive().Upcase("whatup"))
   return nil
@@ -1076,7 +1079,7 @@ func Name(w io.Writer, dot *pkg1.testStruct) (err error) {
   return fun0(w, dot)
 }
 
-// Name(*pkg1.testStruct)
+// template.tmpl(*pkg1.testStruct)
 func fun0(w io.Writer, dot *pkg1.testStruct) error {
   _, _ = io.WriteString(w, funcs.Printf("%q", dot.Hello()))
   return nil
@@ -1101,7 +1104,7 @@ func Name(w io.Writer, dot *pkg1.testStruct) (err error) {
   return fun0(w, dot)
 }
 
-// Name(*pkg1.testStruct)
+// template.tmpl(*pkg1.testStruct)
 func fun0(w io.Writer, dot *pkg1.testStruct) error {
   _, _ = io.WriteString(w, dot.Upcase("whatup"))
   return nil
@@ -1126,7 +1129,7 @@ func Name(w io.Writer, dot *pkg1.testStruct) (err error) {
   return fun0(w, dot)
 }
 
-// Name(*pkg1.testStruct)
+// template.tmpl(*pkg1.testStruct)
 func fun0(w io.Writer, dot *pkg1.testStruct) error {
   _, _ = io.WriteString(w, dot.Upcase("whatup"))
   return nil
@@ -1159,7 +1162,7 @@ func fun2(value int, err error) int {
   return value
 }
 
-// Name(*pkg1.testStruct)
+// template.tmpl(*pkg1.testStruct)
 func fun0(w io.Writer, dot *pkg1.testStruct) error {
   _, _ = fmt.Fprint(w, fun2(dot.Bla()))
   return nil
@@ -1222,7 +1225,7 @@ func fun2(w io.Writer, dot *pkg1.testStruct) error {
   return nil
 }
 
-// Name(*pkg1.testStruct)
+// template.tmpl(*pkg1.testStruct)
 func fun0(w io.Writer, dot *pkg1.testStruct) error {
   _, _ = io.WriteString(w, "\n")
   _, _ = io.WriteString(w, "\n")
@@ -1259,13 +1262,16 @@ func fun1(value *template.Template, err error) *template.Template {
   return value
 }
 
-// Name(*template.Template)
+// template.tmpl(*template.Template)
 func fun0(w io.Writer, dot *template.Template) error {
   _, _ = io.WriteString(w, fun1(dot.Parse("hey")).Name())
   return nil
 }`, template.New("hi")},
 	} {
-		actual, err := Translate("main", "Name", c.input, reflect.TypeOf(c.typ))
+		temp := template.Must(template.New("template.tmpl").Parse(c.input))
+		actual, err := Translate(temp, "main", []TranslateInstruction{
+			{"Name", "template.tmpl", reflect.TypeOf(c.typ)},
+		})
 		if assert.NoError(t, err, c.input) {
 			equalish(t, c.expected, actual, c.input)
 		}

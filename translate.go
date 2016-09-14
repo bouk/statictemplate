@@ -18,17 +18,24 @@ import (
 const VarPrefix = "_Var"
 
 type scope map[string]reflect.Type
+type TranslateInstruction struct {
+	FunctionName string
+	TemplateName string
+	Dot          reflect.Type
+}
 
-func Translate(pkg, name, text string, dot reflect.Type) (string, error) {
-	return (&translator{
+func Translate(temp *template.Template, pkg string, instructions []TranslateInstruction) ([]byte, error) {
+	translator := &translator{
 		funcs: map[string]interface{}{},
 		scopes: []scope{
 			make(scope),
 		},
-		specializedFunctions: make(map[string]map[reflect.Type]string),
+		specializedFunctions: make(map[*template.Template]map[reflect.Type]string),
 		errorFunctions:       make(map[reflect.Type]string),
 		imports:              make(map[string]string),
-	}).translate(pkg, name, text, dot)
+		template:             temp,
+	}
+	return translator.translate(pkg, instructions)
 }
 
 type translator struct {
@@ -36,7 +43,7 @@ type translator struct {
 	scopes               []scope
 	template             *template.Template
 	id                   int
-	specializedFunctions map[string]map[reflect.Type]string
+	specializedFunctions map[*template.Template]map[reflect.Type]string
 	errorFunctions       map[reflect.Type]string
 	generatedFunctions   []string
 	imports              map[string]string
@@ -112,15 +119,23 @@ func (a sortedTypes) Less(i, j int) bool {
 	}
 }
 
-func (t *translator) translate(pkg, name, text string, dot reflect.Type) (string, error) {
-	var err error
-	t.template, err = template.New(name).Parse(text)
-	if err != nil {
-		return "", err
-	}
-	functionName, err := t.generateTemplate(dot, name)
-	if err != nil {
-		return "", err
+type resultEntry struct {
+	name, typeName, functionName string
+}
+
+func (t *translator) translate(pkg string, instructions []TranslateInstruction) ([]byte, error) {
+	var result []resultEntry
+
+	for _, instruction := range instructions {
+		functionName, err := t.generateTemplate(t.template.Lookup(instruction.TemplateName), instruction.Dot)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, resultEntry{
+			name:         instruction.FunctionName,
+			typeName:     t.typeName(instruction.Dot),
+			functionName: functionName,
+		})
 	}
 
 	t.importPackage("io")
@@ -137,8 +152,10 @@ import (
 			fmt.Fprintf(&buf, "%s %q\n", alias, pkgPath)
 		}
 	}
-	fmt.Fprintf(&buf, `)
+	io.WriteString(&buf, ")")
 
+	for _, entry := range result {
+		fmt.Fprintf(&buf, `
 func %s(w io.Writer, dot %s) (err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
@@ -149,7 +166,9 @@ func %s(w io.Writer, dot %s) (err error) {
 		}
 	}()
 	return %s(w, dot)
-}`, name, t.typeName(dot), functionName)
+}
+`, entry.name, entry.typeName, entry.functionName)
+	}
 
 	for _, code := range t.generatedFunctions {
 		io.WriteString(&buf, "\n")
@@ -158,9 +177,9 @@ func %s(w io.Writer, dot %s) (err error) {
 
 	formatted, err := format.Source(buf.Bytes())
 	if err != nil {
-		return "", fmt.Errorf("%s: %v", buf.String(), err)
+		return nil, fmt.Errorf("%s: %v", buf.String(), err)
 	}
-	return string(formatted), nil
+	return formatted, nil
 }
 
 func (t *translator) translateNode(w io.Writer, node parse.Node, dot reflect.Type) error {
@@ -254,11 +273,11 @@ func writeTruthiness(w io.Writer, typ reflect.Type) error {
 	}
 }
 
-func (t *translator) generateTemplate(typ reflect.Type, name string) (string, error) {
-	funcs, ok := t.specializedFunctions[name]
+func (t *translator) generateTemplate(temp *template.Template, typ reflect.Type) (string, error) {
+	funcs, ok := t.specializedFunctions[temp]
 	if !ok {
 		funcs = make(map[reflect.Type]string)
-		t.specializedFunctions[name] = funcs
+		t.specializedFunctions[temp] = funcs
 	}
 	functionName, ok := funcs[typ]
 	if !ok {
@@ -271,7 +290,7 @@ func (t *translator) generateTemplate(typ reflect.Type, name string) (string, er
 			typeName = t.typeName(typ)
 		}
 
-		fmt.Fprintf(&buf, "// %s(", name)
+		fmt.Fprintf(&buf, "// %s(", temp.Name())
 		if typ == nil {
 			buf.WriteString("nil")
 		} else {
@@ -281,7 +300,7 @@ func (t *translator) generateTemplate(typ reflect.Type, name string) (string, er
 		fmt.Fprintf(&buf, ")\nfunc %s(w io.Writer, dot %s) error {\n", functionName, typeName)
 		oldScopes := t.scopes
 		t.scopes = []scope{make(scope)}
-		if err := t.translateNode(&buf, t.template.Lookup(name).Root, typ); err != nil {
+		if err := t.translateNode(&buf, temp.Root, typ); err != nil {
 			return "", err
 		}
 		t.scopes = oldScopes
@@ -294,16 +313,12 @@ func (t *translator) generateTemplate(typ reflect.Type, name string) (string, er
 }
 
 func (t *translator) translateTemplate(w io.Writer, dot reflect.Type, node *parse.TemplateNode) error {
-	var (
-		typ reflect.Type
-		err error
-	)
 	var buf bytes.Buffer
-	typ, err = t.translatePipe(&buf, dot, node.Pipe)
+	typ, err := t.translatePipe(&buf, dot, node.Pipe)
 	if err != nil {
 		return err
 	}
-	name, err := t.generateTemplate(typ, node.Name)
+	name, err := t.generateTemplate(t.template.Lookup(node.Name), typ)
 	if err != nil {
 		return err
 	}
