@@ -1,8 +1,12 @@
 package funcs
 
 import (
+	"fmt"
+	"text/template"
 	_ "unsafe"
 )
+
+const HtmlTemplatePrefix = "_html_template_"
 
 var Funcs = map[string]interface{}{
 	"and":    And,
@@ -24,58 +28,115 @@ var Funcs = map[string]interface{}{
 	"print":    Print,
 	"printf":   Printf,
 	"println":  Println,
+
+	HtmlTemplatePrefix + "attrescaper":     Attrescaper,
+	HtmlTemplatePrefix + "commentescaper":  Commentescaper,
+	HtmlTemplatePrefix + "cssescaper":      Cssescaper,
+	HtmlTemplatePrefix + "cssvaluefilter":  Cssvaluefilter,
+	HtmlTemplatePrefix + "htmlnamefilter":  Htmlnamefilter,
+	HtmlTemplatePrefix + "htmlescaper":     Htmlescaper,
+	HtmlTemplatePrefix + "jsregexpescaper": Jsregexpescaper,
+	HtmlTemplatePrefix + "jsstrescaper":    Jsstrescaper,
+	HtmlTemplatePrefix + "jsvalescaper":    Jsvalescaper,
+	HtmlTemplatePrefix + "nospaceescaper":  Htmlnospaceescaper,
+	HtmlTemplatePrefix + "rcdataescaper":   Rcdataescaper,
+	HtmlTemplatePrefix + "urlescaper":      Urlescaper,
+	HtmlTemplatePrefix + "urlfilter":       Urlfilter,
+	HtmlTemplatePrefix + "urlnormalizer":   Urlnormalizer,
 }
 
-//go:linkname And text/template.and
-func And(arg0 interface{}, args ...interface{}) interface{}
+//go:linkname and text/template.and
+func and(arg0 interface{}, args ...interface{}) interface{}
+func And(arg0 interface{}, args ...interface{}) interface{} {
+	return and(arg0, args...)
+}
 
-//go:linkname Or text/template.or
-func Or(arg0 interface{}, args ...interface{}) interface{}
+//go:linkname or text/template.or
+func or(arg0 interface{}, args ...interface{}) interface{}
+func Or(arg0 interface{}, args ...interface{}) interface{} {
+	return or(arg0, args...)
+}
 
-//go:linkname Not text/template.not
-func Not(arg interface{}) bool
+//go:linkname not text/template.not
+func not(arg interface{}) bool
+func Not(arg interface{}) bool {
+	return not(arg)
+}
 
-//go:linkname Eq text/template.eq
-func Eq(arg1 interface{}, arg2 ...interface{}) (bool, error)
+//go:linkname eq text/template.eq
+func eq(arg1 interface{}, arg2 ...interface{}) (bool, error)
+func Eq(arg1 interface{}, arg2 ...interface{}) (bool, error) {
+	return eq(arg1, arg2...)
+}
 
-//go:linkname Ne text/template.ne
-func Ne(arg1, arg2 interface{}) (bool, error)
+//go:linkname ne text/template.ne
+func ne(arg1, arg2 interface{}) (bool, error)
+func Ne(arg1, arg2 interface{}) (bool, error) {
+	return ne(arg1, arg2)
+}
 
-//go:linkname Lt text/template.lt
-func Lt(arg1, arg2 interface{}) (bool, error)
+//go:linkname lt text/template.lt
+func lt(arg1, arg2 interface{}) (bool, error)
+func Lt(arg1, arg2 interface{}) (bool, error) {
+	return lt(arg1, arg2)
+}
 
-//go:linkname Le text/template.le
-func Le(arg1, arg2 interface{}) (bool, error)
+//go:linkname le text/template.le
+func le(arg1, arg2 interface{}) (bool, error)
+func Le(arg1, arg2 interface{}) (bool, error) {
+	return le(arg1, arg2)
+}
 
-//go:linkname Gt text/template.gt
-func Gt(arg1, arg2 interface{}) (bool, error)
+//go:linkname gt text/template.gt
+func gt(arg1, arg2 interface{}) (bool, error)
+func Gt(arg1, arg2 interface{}) (bool, error) {
+	return gt(arg1, arg2)
+}
 
-//go:linkname Ge text/template.ge
-func Ge(arg1, arg2 interface{}) (bool, error)
+//go:linkname ge text/template.ge
+func ge(arg1, arg2 interface{}) (bool, error)
+func Ge(arg1, arg2 interface{}) (bool, error) {
+	return ge(arg1, arg2)
+}
 
-//go:linkname Index text/template.index
-func Index(item interface{}, indices ...interface{}) (interface{}, error)
+//go:linkname index text/template.index
+func index(item interface{}, indices ...interface{}) (interface{}, error)
+func Index(item interface{}, indices ...interface{}) (interface{}, error) {
+	return index(item, indices...)
+}
 
-//go:linkname Length text/template.length
-func Length(item interface{}) (int, error)
+//go:linkname length text/template.length
+func length(item interface{}) (int, error)
+func Length(item interface{}) (int, error) {
+	return length(item)
+}
 
-//go:linkname Call text/template.call
-func Call(fn interface{}, args ...interface{}) (interface{}, error)
+//go:linkname call text/template.call
+func call(fn interface{}, args ...interface{}) (interface{}, error)
+func Call(fn interface{}, args ...interface{}) (interface{}, error) {
+	return call(fn, args...)
+}
 
-//go:linkname Html text/template.HTMLEscaper
-func Html(args ...interface{}) string
+func Html(args ...interface{}) string {
+	return template.HTMLEscaper(args...)
+}
 
-//go:linkname Js text/template.JSEscaper
-func Js(args ...interface{}) string
+func Js(args ...interface{}) string {
+	return template.JSEscaper(args...)
+}
 
-//go:linkname Urlquery text/template.URLQueryEscaper
-func Urlquery(args ...interface{}) string
+func Urlquery(args ...interface{}) string {
+	return template.URLQueryEscaper(args...)
+}
 
-//go:linkname Print fmt.Sprint
-func Print(a ...interface{}) string
+func Print(a ...interface{}) string {
+	return fmt.Sprint(a...)
+}
 
-//go:linkname Printf fmt.Sprintf
-func Printf(format string, a ...interface{}) string
+func Printf(format string, a ...interface{}) string {
+	return fmt.Sprintf(format, a...)
+}
 
-//go:linkname Println fmt.Sprintln
-func Println(a ...interface{}) string
+func Println(a ...interface{}) string {
+	return fmt.Sprintln(a...)
+}

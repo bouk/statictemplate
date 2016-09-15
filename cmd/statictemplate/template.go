@@ -5,7 +5,7 @@ import (
 	"io"
 )
 
-func writeTemplate(w io.Writer, targets compilationTargets, templateFiles []string) {
+func writeTemplate(w io.Writer, targets compilationTargets, templateFiles []string, html bool) {
 	io.WriteString(w, `package main
 
   import (
@@ -13,8 +13,14 @@ func writeTemplate(w io.Writer, targets compilationTargets, templateFiles []stri
     "log"
     "os"
     "reflect"
-    "text/template"
-  `)
+`)
+	if html {
+		io.WriteString(w, `"html/template"
+`)
+	} else {
+		io.WriteString(w, `"text/template"
+`)
+	}
 	for i, target := range targets {
 		if target.dot.packagePath != "" {
 			fmt.Fprintf(w, "pkg%d %q\n", i, target.dot.packagePath)

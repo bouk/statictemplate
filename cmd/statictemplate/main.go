@@ -29,7 +29,7 @@ func (c *compilationTargets) String() string {
 	return ""
 }
 
-var typeNameRe = regexp.MustCompile(`^([^:]+):([^:]+):([\*\[\]]*)(?:([^\.]+)\.)?([A-Za-z][A-Za-z0-9]*)$`)
+var typeNameRe = regexp.MustCompile(`^([^:]+):([^:]+):([\*\[\]]*)(?:(.+)\.)?([A-Za-z][A-Za-z0-9]*)$`)
 
 func (c *compilationTargets) Set(value string) error {
 	values := typeNameRe.FindStringSubmatch(value)
@@ -49,12 +49,14 @@ var (
 	packageName string
 	outputFile  string
 	glob        string
+	html        bool
 )
 
 func init() {
 	flag.Var(&targets, "t", "Target to process, supports multiple. The format is <function name>:<template name>:<type of the template argument>")
 	flag.StringVar(&packageName, "package", "", "Name of the package of the result file. Defaults to name of the folder of the output file")
 	flag.StringVar(&outputFile, "o", "template.go", "Name of the output file")
+	flag.BoolVar(&html, "html", false, "Interpret templates as HTML, to enable Go's automatic HTML escaping")
 }
 
 func main() {
@@ -95,7 +97,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	writeTemplate(file, targets, templateFiles)
+	writeTemplate(file, targets, templateFiles, html)
 	if err = file.Close(); err != nil {
 		log.Fatal(err)
 	}

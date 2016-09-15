@@ -24,16 +24,17 @@ type TranslateInstruction struct {
 	Dot          reflect.Type
 }
 
-func Translate(temp *template.Template, pkg string, instructions []TranslateInstruction) ([]byte, error) {
+func Translate(temp interface{}, pkg string, instructions []TranslateInstruction) ([]byte, error) {
+	wrapped := wrap(temp)
 	translator := &translator{
 		funcs: map[string]interface{}{},
 		scopes: []scope{
 			make(scope),
 		},
-		specializedFunctions: make(map[*template.Template]map[reflect.Type]string),
+		specializedFunctions: make(map[Template]map[reflect.Type]string),
 		errorFunctions:       make(map[reflect.Type]string),
 		imports:              make(map[string]string),
-		template:             temp,
+		template:             wrapped,
 	}
 	return translator.translate(pkg, instructions)
 }
@@ -41,9 +42,9 @@ func Translate(temp *template.Template, pkg string, instructions []TranslateInst
 type translator struct {
 	funcs                template.FuncMap
 	scopes               []scope
-	template             *template.Template
+	template             Template
 	id                   int
-	specializedFunctions map[*template.Template]map[reflect.Type]string
+	specializedFunctions map[Template]map[reflect.Type]string
 	errorFunctions       map[reflect.Type]string
 	generatedFunctions   []string
 	imports              map[string]string
@@ -127,7 +128,11 @@ func (t *translator) translate(pkg string, instructions []TranslateInstruction) 
 	var result []resultEntry
 
 	for _, instruction := range instructions {
-		functionName, err := t.generateTemplate(t.template.Lookup(instruction.TemplateName), instruction.Dot)
+		temp, err := t.template.Lookup(instruction.TemplateName)
+		if err != nil {
+			return nil, err
+		}
+		functionName, err := t.generateTemplate(temp, instruction.Dot)
 		if err != nil {
 			return nil, err
 		}
@@ -273,7 +278,7 @@ func writeTruthiness(w io.Writer, typ reflect.Type) error {
 	}
 }
 
-func (t *translator) generateTemplate(temp *template.Template, typ reflect.Type) (string, error) {
+func (t *translator) generateTemplate(temp Template, typ reflect.Type) (string, error) {
 	funcs, ok := t.specializedFunctions[temp]
 	if !ok {
 		funcs = make(map[reflect.Type]string)
@@ -300,7 +305,7 @@ func (t *translator) generateTemplate(temp *template.Template, typ reflect.Type)
 		fmt.Fprintf(&buf, ")\nfunc %s(w io.Writer, dot %s) error {\n", functionName, typeName)
 		oldScopes := t.scopes
 		t.scopes = []scope{make(scope)}
-		if err := t.translateNode(&buf, temp.Root, typ); err != nil {
+		if err := t.translateNode(&buf, temp.Tree().Root, typ); err != nil {
 			return "", err
 		}
 		t.scopes = oldScopes
@@ -318,7 +323,11 @@ func (t *translator) translateTemplate(w io.Writer, dot reflect.Type, node *pars
 	if err != nil {
 		return err
 	}
-	name, err := t.generateTemplate(t.template.Lookup(node.Name), typ)
+	temp, err := t.template.Lookup(node.Name)
+	if err != nil {
+		return err
+	}
+	name, err := t.generateTemplate(temp, typ)
 	if err != nil {
 		return err
 	}
@@ -559,8 +568,14 @@ func (t *translator) getFunction(ident string) (reflect.Type, string, error) {
 		pkgName := t.importPackage(strs[0])
 		return reflect.TypeOf(f), fmt.Sprintf("%s.%s", pkgName, strs[1]), nil
 	} else if fType, ok := funcs.Funcs[ident]; ok {
+		var title string
+		if strings.HasPrefix(ident, funcs.HtmlTemplatePrefix) {
+			title = strings.Title(ident[len(funcs.HtmlTemplatePrefix):])
+		} else {
+			title = strings.Title(ident)
+		}
 		packageName := t.importPackage("github.com/bouk/statictemplate/funcs")
-		return reflect.TypeOf(fType), fmt.Sprintf("%s.%s", packageName, strings.Title(ident)), nil
+		return reflect.TypeOf(fType), fmt.Sprintf("%s.%s", packageName, title), nil
 	} else {
 		return nil, "", fmt.Errorf("Unknown function %s", ident)
 	}
@@ -623,11 +638,18 @@ func (t *translator) translateFieldChain(w io.Writer, dot reflect.Type, dotCode 
 			if numOut == 2 {
 				io.WriteString(&buf, ")")
 			}
-		} else if field, ok := typ.FieldByName(name); ok {
-			fmt.Fprintf(&buf, ".%s", name)
-			typ = field.Type
 		} else {
-			return nil, fmt.Errorf("Unknown field %s for type %s", name, typ.Name())
+			// Ptrs don't have fields
+			for typ.Kind() == reflect.Ptr {
+				typ = typ.Elem()
+			}
+
+			if field, ok := typ.FieldByName(name); ok {
+				fmt.Fprintf(&buf, ".%s", name)
+				typ = field.Type
+			} else {
+				return nil, fmt.Errorf("Unknown field %s for type %s", name, typ.Name())
+			}
 		}
 	}
 	for i := len(guards) - 1; i >= 0; i-- {

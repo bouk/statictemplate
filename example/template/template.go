@@ -1,7 +1,7 @@
 package template
 
 import (
-	"fmt"
+	"github.com/bouk/statictemplate/funcs"
 	"io"
 	"text/template"
 )
@@ -42,7 +42,7 @@ func fun0(w io.Writer, dot string) error {
 		return err
 	}
 	_, _ = io.WriteString(w, " ")
-	_, _ = io.WriteString(w, dot)
+	_, _ = io.WriteString(w, funcs.Htmlescaper(dot))
 	_, _ = io.WriteString(w, "!\n")
 	return nil
 }
@@ -53,7 +53,7 @@ func fun2(w io.Writer, dot *template.Template) error {
 		return err
 	}
 	_, _ = io.WriteString(w, " ")
-	_, _ = fmt.Fprint(w, dot)
+	_, _ = io.WriteString(w, funcs.Htmlescaper(dot))
 	_, _ = io.WriteString(w, "!\n")
 	return nil
 }
