@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
-	"text/template"
 	"text/template/parse"
 
 	"github.com/bouk/statictemplate/funcs"
@@ -25,22 +24,13 @@ type TranslateInstruction struct {
 }
 
 func Translate(temp interface{}, pkg string, instructions []TranslateInstruction) ([]byte, error) {
-	wrapped := wrap(temp)
-	translator := &translator{
-		funcs: map[string]interface{}{},
-		scopes: []scope{
-			make(scope),
-		},
-		specializedFunctions: make(map[Template]map[reflect.Type]string),
-		errorFunctions:       make(map[reflect.Type]string),
-		imports:              make(map[string]string),
-		template:             wrapped,
-	}
-	return translator.translate(pkg, instructions)
+	translator := New(temp)
+	return translator.Translate(pkg, instructions)
 }
 
-type translator struct {
-	funcs                template.FuncMap
+type Translator struct {
+	Funcs map[string]interface{}
+
 	scopes               []scope
 	template             Template
 	id                   int
@@ -50,81 +40,21 @@ type translator struct {
 	imports              map[string]string
 }
 
-func (t *translator) importPackage(name string) string {
-	if pkg, ok := t.imports[name]; ok {
-		return pkg
-	}
-
-	var pkg string
-	switch name {
-	case "fmt", "io":
-		pkg = name
-	case "text/template":
-		pkg = "template"
-	case "github.com/bouk/statictemplate/funcs":
-		pkg = "funcs"
-	default:
-		pkg = fmt.Sprintf("pkg%d", t.id)
-		t.id++
-	}
-
-	t.imports[name] = pkg
-	return pkg
-}
-
-func (t *translator) generateFunctionName() string {
-	name := fmt.Sprintf("fun%d", t.id)
-	t.id++
-	return name
-}
-
-func (t *translator) pushScope() {
-	t.scopes = append(t.scopes, make(scope))
-}
-
-func (t *translator) popScope() {
-	t.scopes = t.scopes[:len(t.scopes)-1]
-}
-
-// Checks whether identifier is in scope
-func (t *translator) inScope(name string) bool {
-	_, ok := t.scopes[len(t.scopes)-1][name]
-	return ok
-}
-
-// Checks whether identifier is in scope, or add it otherwise
-func (t *translator) addToScope(name string, typ reflect.Type) {
-	t.scopes[len(t.scopes)-1][name] = typ
-}
-
-func (t *translator) findVariable(name string) (reflect.Type, error) {
-	for i := len(t.scopes) - 1; i >= 0; i-- {
-		if typ, ok := t.scopes[i][name]; ok {
-			return typ, nil
-		}
-	}
-	return nil, fmt.Errorf("Can't find variable %s in scope", name)
-}
-
-type sortedTypes []reflect.Type
-
-func (a sortedTypes) Len() int      { return len(a) }
-func (a sortedTypes) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-func (a sortedTypes) Less(i, j int) bool {
-	if a[i] == nil {
-		return true
-	} else if a[j] == nil {
-		return false
-	} else {
-		return a[i].String() < a[j].String()
+func New(temp interface{}) *Translator {
+	wrapped := wrap(temp)
+	return &Translator{
+		Funcs: map[string]interface{}{},
+		scopes: []scope{
+			make(scope),
+		},
+		specializedFunctions: make(map[Template]map[reflect.Type]string),
+		errorFunctions:       make(map[reflect.Type]string),
+		imports:              make(map[string]string),
+		template:             wrapped,
 	}
 }
 
-type resultEntry struct {
-	name, typeName, functionName string
-}
-
-func (t *translator) translate(pkg string, instructions []TranslateInstruction) ([]byte, error) {
+func (t *Translator) Translate(pkg string, instructions []TranslateInstruction) ([]byte, error) {
 	var result []resultEntry
 
 	for _, instruction := range instructions {
@@ -187,7 +117,81 @@ func %s(w io.Writer, dot %s) (err error) {
 	return formatted, nil
 }
 
-func (t *translator) translateNode(w io.Writer, node parse.Node, dot reflect.Type) error {
+func (t *Translator) importPackage(name string) string {
+	if pkg, ok := t.imports[name]; ok {
+		return pkg
+	}
+
+	var pkg string
+	switch name {
+	case "fmt", "io":
+		pkg = name
+	case "text/template":
+		pkg = "template"
+	case "github.com/bouk/statictemplate/funcs":
+		pkg = "funcs"
+	default:
+		pkg = fmt.Sprintf("pkg%d", t.id)
+		t.id++
+	}
+
+	t.imports[name] = pkg
+	return pkg
+}
+
+func (t *Translator) generateFunctionName() string {
+	name := fmt.Sprintf("fun%d", t.id)
+	t.id++
+	return name
+}
+
+func (t *Translator) pushScope() {
+	t.scopes = append(t.scopes, make(scope))
+}
+
+func (t *Translator) popScope() {
+	t.scopes = t.scopes[:len(t.scopes)-1]
+}
+
+// Checks whether identifier is in scope
+func (t *Translator) inScope(name string) bool {
+	_, ok := t.scopes[len(t.scopes)-1][name]
+	return ok
+}
+
+// Checks whether identifier is in scope, or add it otherwise
+func (t *Translator) addToScope(name string, typ reflect.Type) {
+	t.scopes[len(t.scopes)-1][name] = typ
+}
+
+func (t *Translator) findVariable(name string) (reflect.Type, error) {
+	for i := len(t.scopes) - 1; i >= 0; i-- {
+		if typ, ok := t.scopes[i][name]; ok {
+			return typ, nil
+		}
+	}
+	return nil, fmt.Errorf("Can't find variable %s in scope", name)
+}
+
+type sortedTypes []reflect.Type
+
+func (a sortedTypes) Len() int      { return len(a) }
+func (a sortedTypes) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a sortedTypes) Less(i, j int) bool {
+	if a[i] == nil {
+		return true
+	} else if a[j] == nil {
+		return false
+	} else {
+		return a[i].String() < a[j].String()
+	}
+}
+
+type resultEntry struct {
+	name, typeName, functionName string
+}
+
+func (t *Translator) translateNode(w io.Writer, node parse.Node, dot reflect.Type) error {
 	switch node := node.(type) {
 	case *parse.ListNode:
 		for _, item := range node.Nodes {
@@ -278,7 +282,7 @@ func writeTruthiness(w io.Writer, typ reflect.Type) error {
 	}
 }
 
-func (t *translator) generateTemplate(temp Template, typ reflect.Type) (string, error) {
+func (t *Translator) generateTemplate(temp Template, typ reflect.Type) (string, error) {
 	funcs, ok := t.specializedFunctions[temp]
 	if !ok {
 		funcs = make(map[reflect.Type]string)
@@ -317,7 +321,7 @@ func (t *translator) generateTemplate(temp Template, typ reflect.Type) (string, 
 	return functionName, nil
 }
 
-func (t *translator) translateTemplate(w io.Writer, dot reflect.Type, node *parse.TemplateNode) error {
+func (t *Translator) translateTemplate(w io.Writer, dot reflect.Type, node *parse.TemplateNode) error {
 	var buf bytes.Buffer
 	typ, err := t.translatePipe(&buf, dot, node.Pipe)
 	if err != nil {
@@ -338,7 +342,7 @@ func (t *translator) translateTemplate(w io.Writer, dot reflect.Type, node *pars
 	return err
 }
 
-func (t *translator) translateScoped(w io.Writer, dot reflect.Type, nodeType parse.NodeType, pipe *parse.PipeNode, list, elseList *parse.ListNode) error {
+func (t *Translator) translateScoped(w io.Writer, dot reflect.Type, nodeType parse.NodeType, pipe *parse.PipeNode, list, elseList *parse.ListNode) error {
 	io.WriteString(w, "if eval := ")
 	typ, err := t.translatePipe(w, dot, pipe)
 	if err != nil {
@@ -405,7 +409,7 @@ func (t *translator) translateScoped(w io.Writer, dot reflect.Type, nodeType par
 	return nil
 }
 
-func (t *translator) translatePipe(w io.Writer, dot reflect.Type, pipe *parse.PipeNode) (reflect.Type, error) {
+func (t *Translator) translatePipe(w io.Writer, dot reflect.Type, pipe *parse.PipeNode) (reflect.Type, error) {
 	if pipe == nil {
 		io.WriteString(w, "nil")
 		return nil, nil
@@ -414,7 +418,7 @@ func (t *translator) translatePipe(w io.Writer, dot reflect.Type, pipe *parse.Pi
 	}
 }
 
-func (t *translator) translateCall(w io.Writer, dot reflect.Type, args []parse.Node, nextCommands []*parse.CommandNode) error {
+func (t *Translator) translateCall(w io.Writer, dot reflect.Type, args []parse.Node, nextCommands []*parse.CommandNode) error {
 	io.WriteString(w, "(")
 	for i, arg := range args {
 		if i != 0 {
@@ -436,7 +440,7 @@ func (t *translator) translateCall(w io.Writer, dot reflect.Type, args []parse.N
 	return nil
 }
 
-func (t *translator) translateCommand(w io.Writer, dot reflect.Type, cmd *parse.CommandNode, nextCommands []*parse.CommandNode) (reflect.Type, error) {
+func (t *Translator) translateCommand(w io.Writer, dot reflect.Type, cmd *parse.CommandNode, nextCommands []*parse.CommandNode) (reflect.Type, error) {
 	action := cmd.Args[0]
 	args := cmd.Args[1:]
 
@@ -482,7 +486,7 @@ func (t *translator) translateCommand(w io.Writer, dot reflect.Type, cmd *parse.
 	}
 }
 
-func (t *translator) translateArg(w io.Writer, dot reflect.Type, arg parse.Node) (reflect.Type, error) {
+func (t *Translator) translateArg(w io.Writer, dot reflect.Type, arg parse.Node) (reflect.Type, error) {
 	switch arg := arg.(type) {
 	case *parse.FieldNode:
 		return t.translateField(w, dot, arg, nil, nil)
@@ -522,7 +526,7 @@ func (t *translator) translateArg(w io.Writer, dot reflect.Type, arg parse.Node)
 	}
 }
 
-func (t *translator) translateChain(w io.Writer, dot reflect.Type, node *parse.ChainNode, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
+func (t *Translator) translateChain(w io.Writer, dot reflect.Type, node *parse.ChainNode, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
 	var buf bytes.Buffer
 	typ, err := t.translateArg(&buf, dot, node.Node)
 	if err != nil {
@@ -531,7 +535,7 @@ func (t *translator) translateChain(w io.Writer, dot reflect.Type, node *parse.C
 	return t.translateFieldChain(w, dot, &buf, typ, node.Field, args, nextCommands)
 }
 
-func (t *translator) translateVariable(w io.Writer, dot reflect.Type, node *parse.VariableNode, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
+func (t *Translator) translateVariable(w io.Writer, dot reflect.Type, node *parse.VariableNode, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
 	ident := node.Ident[0][1:]
 	if len(node.Ident) > 1 && (len(args) != 0 || len(nextCommands) != 0) {
 		return nil, fmt.Errorf("Can't call variable %s", node.Ident[0])
@@ -544,7 +548,7 @@ func (t *translator) translateVariable(w io.Writer, dot reflect.Type, node *pars
 	return t.translateFieldChain(w, dot, constantWriterTo(VarPrefix+ident), typ, node.Ident[1:], args, nextCommands)
 }
 
-func (t *translator) generateErrorFunction(typ reflect.Type) string {
+func (t *Translator) generateErrorFunction(typ reflect.Type) string {
 	name, ok := t.errorFunctions[typ]
 	if !ok {
 		name = t.generateFunctionName()
@@ -561,12 +565,12 @@ func %s(value %s, err error) %s {
 	return name
 }
 
-func (t *translator) getFunction(ident string) (reflect.Type, string, error) {
-	if f, ok := t.funcs[ident]; ok {
+func (t *Translator) getFunction(ident string) (reflect.Type, string, error) {
+	if f, ok := t.Funcs[ident]; ok {
 		fName := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
-		strs := strings.SplitN(fName, ".", 2)
-		pkgName := t.importPackage(strs[0])
-		return reflect.TypeOf(f), fmt.Sprintf("%s.%s", pkgName, strs[1]), nil
+		strs := strings.Split(fName, ".")
+		pkgName := t.importPackage(strings.Join(strs[0:len(strs)-1], "."))
+		return reflect.TypeOf(f), fmt.Sprintf("%s.%s", pkgName, strs[len(strs)-1]), nil
 	} else if fType, ok := funcs.Funcs[ident]; ok {
 		var title string
 		if strings.HasPrefix(ident, funcs.HtmlTemplatePrefix) {
@@ -581,7 +585,7 @@ func (t *translator) getFunction(ident string) (reflect.Type, string, error) {
 	}
 }
 
-func (t *translator) translateFunction(w io.Writer, dot reflect.Type, ident *parse.IdentifierNode, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
+func (t *Translator) translateFunction(w io.Writer, dot reflect.Type, ident *parse.IdentifierNode, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
 	typ, fName, err := t.getFunction(ident.Ident)
 	if err != nil {
 		return nil, err
@@ -608,11 +612,11 @@ func (t *translator) translateFunction(w io.Writer, dot reflect.Type, ident *par
 	return typ.Out(0), nil
 }
 
-func (t *translator) translateField(w io.Writer, dot reflect.Type, field *parse.FieldNode, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
+func (t *Translator) translateField(w io.Writer, dot reflect.Type, field *parse.FieldNode, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
 	return t.translateFieldChain(w, dot, constantWriterTo("dot"), dot, field.Ident, args, nextCommands)
 }
 
-func (t *translator) translateFieldChain(w io.Writer, dot reflect.Type, dotCode io.WriterTo, typ reflect.Type, fields []string, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
+func (t *Translator) translateFieldChain(w io.Writer, dot reflect.Type, dotCode io.WriterTo, typ reflect.Type, fields []string, args []parse.Node, nextCommands []*parse.CommandNode) (reflect.Type, error) {
 	var buf bytes.Buffer
 	guards := []string{}
 	for i, name := range fields {
@@ -663,7 +667,7 @@ func (t *translator) translateFieldChain(w io.Writer, dot reflect.Type, dotCode 
 	return typ, err
 }
 
-func (t *translator) typeName(typ reflect.Type) string {
+func (t *Translator) typeName(typ reflect.Type) string {
 	switch typ.Kind() {
 	case reflect.Ptr:
 		return fmt.Sprintf("*%s", t.typeName(typ.Elem()))
