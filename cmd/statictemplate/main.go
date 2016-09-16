@@ -29,7 +29,10 @@ func (c *compilationTargets) String() string {
 	return ""
 }
 
-var typeNameRe = regexp.MustCompile(`^([^:]+):([^:]+):([\*\[\]]*)(?:(.+)\.)?([A-Za-z][A-Za-z0-9]*)$`)
+var (
+	valueReferenceRe = regexp.MustCompile(`^(?:(.+)\.)?([A-Za-z][A-Za-z0-9]*)$`)
+	typeNameRe       = regexp.MustCompile(`^([^:]+):([^:]+):([\*\[\]]*)(?:(.+)\.)?([A-Za-z][A-Za-z0-9]*)$`)
+)
 
 func (c *compilationTargets) Set(value string) error {
 	values := typeNameRe.FindStringSubmatch(value)
@@ -50,6 +53,7 @@ var (
 	outputFile  string
 	glob        string
 	html        bool
+	funcMap     string
 )
 
 func init() {
@@ -57,6 +61,7 @@ func init() {
 	flag.StringVar(&packageName, "package", "", "Name of the package of the result file. Defaults to name of the folder of the output file")
 	flag.StringVar(&outputFile, "o", "template.go", "Name of the output file")
 	flag.BoolVar(&html, "html", false, "Interpret templates as HTML, to enable Go's automatic HTML escaping")
+	flag.StringVar(&funcMap, "funcs", "", "A reference to a custom Funcs map to include")
 }
 
 func main() {
@@ -97,7 +102,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	writeTemplate(file, targets, templateFiles, html)
+	if err = writeTemplate(file, targets, templateFiles, html, funcMap); err != nil {
+		log.Fatal(err)
+	}
 	if err = file.Close(); err != nil {
 		log.Fatal(err)
 	}
