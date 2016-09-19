@@ -168,7 +168,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			if _, err = buf.WriteTo(file); err != nil {
+			if _, err = file.Write(src); err != nil {
 				log.Fatal(err)
 			}
 			file.Close()
