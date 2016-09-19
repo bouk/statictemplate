@@ -5,16 +5,7 @@ import (
 	"io"
 )
 
-func writeTemplate(w io.Writer, targets compilationTargets, templateFiles []string, html bool, funcMap string) error {
-	var funcMapImport, funcMapName string
-	if funcMap != "" {
-		values := valueReferenceRe.FindStringSubmatch(funcMap)
-		if values == nil || values[1] == "" {
-			return fmt.Errorf("invalid funcs value %q, expected <import>.<name>", funcMap)
-		}
-		funcMapImport = fmt.Sprintf("funcMapImport %q\n", values[1])
-		funcMapName = fmt.Sprintf("funcMapImport.%s", values[2])
-	}
+func writeTemplate(w io.Writer, targets compilationTargets, templateFiles []string, html bool, funcMapImport, funcMapName string) error {
 	io.WriteString(w, `package main
 
   import (
