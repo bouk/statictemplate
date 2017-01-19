@@ -1,12 +1,12 @@
 package template
 
 import (
+	pkg1 "github.com/bouk/statictemplate/example"
 	"github.com/bouk/statictemplate/funcs"
 	"io"
-	"text/template"
 )
 
-func Hi(w io.Writer, dot string) (err error) {
+func Index(w io.Writer, dot []pkg1.Post) (err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			var ok bool
@@ -18,42 +18,55 @@ func Hi(w io.Writer, dot string) (err error) {
 	return fun0(w, dot)
 }
 
-func Hello(w io.Writer, dot *template.Template) (err error) {
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			var ok bool
-			if err, ok = recovered.(error); !ok {
-				panic(recovered)
+// header.tmpl(string)
+func fun2(w io.Writer, dot string) error {
+	_, _ = io.WriteString(w, "<!doctype html>\n<html>\n  <head>\n    ")
+	if eval := dot; len(eval) != 0 {
+		_, _ = io.WriteString(w, "\n    <title>Bouke's Blog | ")
+		_, _ = io.WriteString(w, funcs.Rcdataescaper(dot))
+		_, _ = io.WriteString(w, "</title>\n    ")
+	} else {
+		_, _ = io.WriteString(w, "\n    <title>Bouke's Blog</title>\n    ")
+	}
+	_, _ = io.WriteString(w, "\n  </head>\n  <body>\n")
+	return nil
+}
+
+// post.tmpl(pkg1.Post)
+func fun3(w io.Writer, dot pkg1.Post) error {
+	_, _ = io.WriteString(w, "<article>\n  <h2>")
+	_, _ = io.WriteString(w, funcs.Htmlescaper(dot.Title))
+	_, _ = io.WriteString(w, "</h2>\n  <p>")
+	_, _ = io.WriteString(w, funcs.Htmlescaper(dot.Body))
+	_, _ = io.WriteString(w, "</h2>\n</article>\n")
+	return nil
+}
+
+// footer.tmpl(nil)
+func fun4(w io.Writer, dot interface{}) error {
+	_, _ = io.WriteString(w, "</body>\n</html>\n")
+	return nil
+}
+
+// index.tmpl([]pkg1.Post)
+func fun0(w io.Writer, dot []pkg1.Post) error {
+	if err := fun2(w, "Index"); err != nil {
+		return err
+	}
+	_, _ = io.WriteString(w, "\n\n<section>\n")
+	if eval := dot; len(eval) != 0 {
+		for _, _Varpost := range eval {
+			_, _ = io.WriteString(w, "\n")
+			if err := fun3(w, _Varpost); err != nil {
+				return err
 			}
+			_, _ = io.WriteString(w, "\n")
 		}
-	}()
-	return fun2(w, dot)
-}
-
-// notice.tmpl(nil)
-func fun1(w io.Writer, dot interface{}) error {
-	_, _ = io.WriteString(w, "Hello\n")
-	return nil
-}
-
-// hi.tmpl(string)
-func fun0(w io.Writer, dot string) error {
-	if err := fun1(w, nil); err != nil {
+	}
+	_, _ = io.WriteString(w, "\n</section>\n\n")
+	if err := fun4(w, nil); err != nil {
 		return err
 	}
-	_, _ = io.WriteString(w, " ")
-	_, _ = io.WriteString(w, funcs.Htmlescaper(dot))
-	_, _ = io.WriteString(w, "!\n")
-	return nil
-}
-
-// hi.tmpl(*template.Template)
-func fun2(w io.Writer, dot *template.Template) error {
-	if err := fun1(w, nil); err != nil {
-		return err
-	}
-	_, _ = io.WriteString(w, " ")
-	_, _ = io.WriteString(w, funcs.Htmlescaper(dot))
-	_, _ = io.WriteString(w, "!\n")
+	_, _ = io.WriteString(w, "\n")
 	return nil
 }
