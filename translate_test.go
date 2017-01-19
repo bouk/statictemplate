@@ -261,6 +261,7 @@ func Name(w io.Writer, dot string) (err error) {
 // template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _Vara := 1
+	_ = _Vara
   _, _ = fmt.Fprint(w, _Vara)
   return nil
 }`},
@@ -286,6 +287,7 @@ func Name(w io.Writer, dot string) (err error) {
 // template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _Vara := "hey"
+	_ = _Vara
   _, _ = io.WriteString(w, _Vara)
   return nil
 }`},
@@ -311,6 +313,7 @@ func Name(w io.Writer, dot string) (err error) {
 // template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _Vara := 1
+	_ = _Vara
   _Vara = 2
   return nil
 }`},
@@ -336,8 +339,10 @@ func Name(w io.Writer, dot string) (err error) {
 // template.tmpl(string)
 func fun0(w io.Writer, dot string) error {
   _Vara := 1
+	_ = _Vara
   if eval := dot; len(eval) != 0 {
     _Vara := 2
+		_ = _Vara
   }
   _Vara = 3
   return nil
@@ -716,7 +721,8 @@ func Name(w io.Writer, dot []string) (err error) {
 // template.tmpl([]string)
 func fun0(w io.Writer, dot []string) error {
   if eval := dot; len(eval) != 0 {
-    for range eval {
+		for _, dot := range eval {
+			_ = dot
       _, _ = io.WriteString(w, "Hello")
     }
   }
@@ -745,6 +751,8 @@ func Name(w io.Writer, dot []string) (err error) {
 func fun0(w io.Writer, dot []string) error {
   if eval := dot; len(eval) != 0 {
     for _, _Vara := range eval {
+			dot := _Vara
+			_ = dot
       _, _ = io.WriteString(w, _Vara)
     }
   }
@@ -774,6 +782,9 @@ func Name(w io.Writer, dot []string) (err error) {
 func fun0(w io.Writer, dot []string) error {
   if eval := dot; len(eval) != 0 {
     for _Vari, _Vara := range eval {
+			_ = _Vari
+			dot := _Vara
+			_ = dot
       _, _ = fmt.Fprint(w, _Vari)
       _, _ = io.WriteString(w, _Vara)
     }
@@ -877,6 +888,7 @@ func Name(w io.Writer, dot struct{ A string }) (err error) {
 func fun0(w io.Writer, dot struct{ A string }) error {
   if eval := dot.A; len(eval) != 0 {
     dot := eval
+		_ = dot
     _, _ = io.WriteString(w, " ")
     _, _ = fmt.Fprint(w, dot)
     _, _ = io.WriteString(w, " ")
@@ -911,6 +923,7 @@ func Name(w io.Writer, dot struct{ A bool }) (err error) {
 func fun0(w io.Writer, dot struct{ A bool }) error {
   if eval := dot.A; eval {
     dot := eval
+		_ = dot
     _, _ = io.WriteString(w, " ")
     _, _ = fmt.Fprint(w, dot)
     _, _ = io.WriteString(w, " ")
@@ -945,6 +958,7 @@ func Name(w io.Writer, dot struct{ A []int }) (err error) {
 func fun0(w io.Writer, dot struct{ A []int }) error {
   if eval := dot.A; len(eval) != 0 {
     dot := eval
+		_ = dot
     _, _ = io.WriteString(w, " ")
     _, _ = fmt.Fprint(w, dot)
     _, _ = io.WriteString(w, " ")
@@ -979,6 +993,7 @@ func Name(w io.Writer, dot struct{ A []int }) (err error) {
 func fun0(w io.Writer, dot struct{ A []int }) error {
   if eval := dot.A; len(eval) != 0 {
     _Varb := eval
+		_ = _Varb
     _, _ = fmt.Fprint(w, _Varb)
   }
   return nil

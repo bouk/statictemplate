@@ -226,6 +226,9 @@ func (t *Translator) translateNode(w io.Writer, node parse.Node, dot reflect.Typ
 		}
 		if len(pipe.Decl) == 1 {
 			ident := pipe.Decl[0].Ident[0][1:]
+			if !t.inScope(ident) {
+				fmt.Fprintf(writer, "\n_ = %s%s", VarPrefix, ident)
+			}
 			t.addToScope(ident, typ)
 		}
 
@@ -356,44 +359,46 @@ func (t *Translator) translateScoped(w io.Writer, dot reflect.Type, nodeType par
 	t.pushScope()
 
 	if nodeType == parse.NodeWith {
-		io.WriteString(w, "dot := eval\n")
+		io.WriteString(w, "dot := eval\n_ = dot\n")
 	}
 
 	if nodeType == parse.NodeRange {
 		switch len(pipe.Decl) {
 		case 0:
-			io.WriteString(w, "for range eval {\n")
+			io.WriteString(w, "for _, dot := range eval {\n_ = dot\n")
 		case 1:
 			ident := pipe.Decl[0].Ident[0][1:]
-			fmt.Fprintf(w, "for _, %s%s := range eval {\n", VarPrefix, ident)
+			fmt.Fprintf(w, "for _, %s%s := range eval {\ndot := %s%s\n_ = dot\n", VarPrefix, ident, VarPrefix, ident)
 			t.addToScope(ident, typ.Elem())
 		case 2:
 			index := pipe.Decl[0].Ident[0][1:]
 			ident := pipe.Decl[1].Ident[0][1:]
 			t.addToScope(index, reflect.TypeOf(int64(0)))
 			t.addToScope(ident, typ.Elem())
-			fmt.Fprintf(w, "for %s%s, %s%s := range eval {\n", VarPrefix, index, VarPrefix, ident)
+			fmt.Fprintf(w, "for %s%s, %s%s := range eval {\n_ = %s%s\ndot := %s%s\n_ = dot\n", VarPrefix, index, VarPrefix, ident, VarPrefix, index, VarPrefix, ident)
 		default:
 			return fmt.Errorf("Too many declarations for range")
 		}
+
+		if err := t.translateNode(w, list, typ.Elem()); err != nil {
+			return err
+		}
+
+		io.WriteString(w, "}\n")
 	} else {
 		switch len(pipe.Decl) {
 		case 0:
 		case 1:
 			ident := pipe.Decl[0].Ident[0][1:]
-			fmt.Fprintf(w, "%s%s := eval\n", VarPrefix, ident)
+			fmt.Fprintf(w, "%s%s := eval\n_ = %s%s\n", VarPrefix, ident, VarPrefix, ident)
 			t.addToScope(ident, typ)
 		default:
 			return fmt.Errorf("Too many declarations")
 		}
-	}
 
-	if err := t.translateNode(w, list, dot); err != nil {
-		return err
-	}
-
-	if nodeType == parse.NodeRange {
-		io.WriteString(w, "}\n")
+		if err := t.translateNode(w, list, dot); err != nil {
+			return err
+		}
 	}
 
 	t.popScope()
