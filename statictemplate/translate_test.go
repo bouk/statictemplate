@@ -1002,7 +1002,7 @@ func fun0(w io.Writer, dot struct{ A []int }) error {
 package main
 
 import (
-  pkg1 "github.com/bouk/statictemplate"
+  pkg1 "github.com/bouk/statictemplate/statictemplate"
   "io"
 )
 
@@ -1027,7 +1027,7 @@ func fun0(w io.Writer, dot *pkg1.testStruct) error {
 package main
 
 import (
-  pkg1 "github.com/bouk/statictemplate"
+  pkg1 "github.com/bouk/statictemplate/statictemplate"
   "io"
 )
 
@@ -1052,7 +1052,7 @@ func fun0(w io.Writer, dot *pkg1.testStruct) error {
 package main
 
 import (
-  pkg1 "github.com/bouk/statictemplate"
+  pkg1 "github.com/bouk/statictemplate/statictemplate"
   "io"
 )
 
@@ -1077,8 +1077,8 @@ func fun0(w io.Writer, dot *pkg1.testStruct) error {
 package main
 
 import (
-  pkg1 "github.com/bouk/statictemplate"
   "github.com/bouk/statictemplate/funcs"
+  pkg1 "github.com/bouk/statictemplate/statictemplate"
   "io"
 )
 
@@ -1103,7 +1103,7 @@ func fun0(w io.Writer, dot *pkg1.testStruct) error {
 package main
 
 import (
-  pkg1 "github.com/bouk/statictemplate"
+  pkg1 "github.com/bouk/statictemplate/statictemplate"
   "io"
 )
 
@@ -1128,7 +1128,7 @@ func fun0(w io.Writer, dot *pkg1.testStruct) error {
 package main
 
 import (
-  pkg1 "github.com/bouk/statictemplate"
+  pkg1 "github.com/bouk/statictemplate/statictemplate"
   "io"
 )
 
@@ -1154,7 +1154,7 @@ package main
 
 import (
   "fmt"
-  pkg1 "github.com/bouk/statictemplate"
+  pkg1 "github.com/bouk/statictemplate/statictemplate"
   "io"
 )
 
@@ -1191,7 +1191,7 @@ package main
 
 import (
   "fmt"
-  pkg1 "github.com/bouk/statictemplate"
+  pkg1 "github.com/bouk/statictemplate/statictemplate"
   "io"
 )
 

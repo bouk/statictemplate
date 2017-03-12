@@ -55,9 +55,9 @@ func fun0(w io.Writer, dot []pkg1.Post) error {
 	}
 	_, _ = io.WriteString(w, "\n\n<section>\n")
 	if eval := dot; len(eval) != 0 {
-		for _, dot := range eval {
-			_Varpost := dot
-			_ = _Varpost
+		for _, _Varpost := range eval {
+			dot := _Varpost
+			_ = dot
 			_, _ = io.WriteString(w, "\n")
 			if err := fun3(w, _Varpost); err != nil {
 				return err

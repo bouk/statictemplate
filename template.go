@@ -9,7 +9,7 @@ func writeTemplate(w io.Writer, targets compilationTargets, templateFiles []stri
 	io.WriteString(w, `package main
 
   import (
-    "github.com/bouk/statictemplate"
+    "github.com/bouk/statictemplate/statictemplate"
     "log"
     "os"
     "reflect"
