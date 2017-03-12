@@ -2,6 +2,8 @@
 
 Statictemplate is a code generator for Go's text/template and html/template packages. It works by reading in the template files, and generating the needed functions based on the combination of requested function names and type signatures.
 
+Please read [my blogpost](http://bouk.co/blog/code-generating-code/) about this project for some background.
+
 ## Installation
 
 To install the commandline tool, run `go get github.com/bouk/statictemplate`.
@@ -34,3 +36,7 @@ The example in this project uses the following command
 ```
 statictemplate -html -o example/template/template.go -t "Index:index.tmpl:[]github.com/bouk/statictemplate/example.Post" example/template/*.tmpl
 ```
+
+## Docs
+
+[Check out the docs](https://godoc.org/github.com/bouk/statictemplate/statictemplate).
