@@ -14,46 +14,52 @@ import (
 	"github.com/bouk/statictemplate/funcs"
 )
 
-const VarPrefix = "_Var"
+const varPrefix = "_Var"
 
 type scope map[string]reflect.Type
+
+// TranslateInstruction specifies a single function to be generated from a template
 type TranslateInstruction struct {
 	FunctionName string
 	TemplateName string
 	Dot          reflect.Type
 }
 
-func Translate(temp interface{}, pkg string, instructions []TranslateInstruction) ([]byte, error) {
-	translator := New(temp)
+// Translate is a convenience method for New(template).Translate(pkg, instructions)
+func Translate(template interface{}, pkg string, instructions []TranslateInstruction) ([]byte, error) {
+	translator := New(template)
 	return translator.Translate(pkg, instructions)
 }
 
+// Translator converts a template with a set of instructions to Go code
 type Translator struct {
 	Funcs map[string]interface{}
 
 	scopes               []scope
-	template             Template
+	template             wrappedTemplate
 	id                   int
-	specializedFunctions map[Template]map[reflect.Type]string
+	specializedFunctions map[wrappedTemplate]map[reflect.Type]string
 	errorFunctions       map[reflect.Type]string
 	generatedFunctions   []string
 	imports              map[string]string
 }
 
-func New(temp interface{}) *Translator {
-	wrapped := wrap(temp)
+// New creates a new instance of Translator
+func New(template interface{}) *Translator {
+	wrapped := wrap(template)
 	return &Translator{
 		Funcs: map[string]interface{}{},
 		scopes: []scope{
 			make(scope),
 		},
-		specializedFunctions: make(map[Template]map[reflect.Type]string),
+		specializedFunctions: make(map[wrappedTemplate]map[reflect.Type]string),
 		errorFunctions:       make(map[reflect.Type]string),
 		imports:              make(map[string]string),
 		template:             wrapped,
 	}
 }
 
+// Translate converts a template with a set of instructions to Go code
 func (t *Translator) Translate(pkg string, instructions []TranslateInstruction) ([]byte, error) {
 	var result []resultEntry
 
@@ -212,9 +218,9 @@ func (t *Translator) translateNode(w io.Writer, node parse.Node, dot reflect.Typ
 		} else if len(pipe.Decl) == 1 {
 			ident := pipe.Decl[0].Ident[0][1:]
 			if t.inScope(ident) {
-				fmt.Fprintf(writer, "%s%s = ", VarPrefix, ident)
+				fmt.Fprintf(writer, "%s%s = ", varPrefix, ident)
 			} else {
-				fmt.Fprintf(writer, "%s%s := ", VarPrefix, ident)
+				fmt.Fprintf(writer, "%s%s := ", varPrefix, ident)
 			}
 		} else {
 			return fmt.Errorf("Only support single variable for assignment")
@@ -227,7 +233,7 @@ func (t *Translator) translateNode(w io.Writer, node parse.Node, dot reflect.Typ
 		if len(pipe.Decl) == 1 {
 			ident := pipe.Decl[0].Ident[0][1:]
 			if !t.inScope(ident) {
-				fmt.Fprintf(writer, "\n_ = %s%s", VarPrefix, ident)
+				fmt.Fprintf(writer, "\n_ = %s%s", varPrefix, ident)
 			}
 			t.addToScope(ident, typ)
 		}
@@ -285,7 +291,7 @@ func writeTruthiness(w io.Writer, typ reflect.Type) error {
 	}
 }
 
-func (t *Translator) generateTemplate(temp Template, typ reflect.Type) (string, error) {
+func (t *Translator) generateTemplate(temp wrappedTemplate, typ reflect.Type) (string, error) {
 	funcs, ok := t.specializedFunctions[temp]
 	if !ok {
 		funcs = make(map[reflect.Type]string)
@@ -368,14 +374,14 @@ func (t *Translator) translateScoped(w io.Writer, dot reflect.Type, nodeType par
 			io.WriteString(w, "for _, dot := range eval {\n_ = dot\n")
 		case 1:
 			ident := pipe.Decl[0].Ident[0][1:]
-			fmt.Fprintf(w, "for _, %s%s := range eval {\ndot := %s%s\n_ = dot\n", VarPrefix, ident, VarPrefix, ident)
+			fmt.Fprintf(w, "for _, %s%s := range eval {\ndot := %s%s\n_ = dot\n", varPrefix, ident, varPrefix, ident)
 			t.addToScope(ident, typ.Elem())
 		case 2:
 			index := pipe.Decl[0].Ident[0][1:]
 			ident := pipe.Decl[1].Ident[0][1:]
 			t.addToScope(index, reflect.TypeOf(int64(0)))
 			t.addToScope(ident, typ.Elem())
-			fmt.Fprintf(w, "for %s%s, %s%s := range eval {\n_ = %s%s\ndot := %s%s\n_ = dot\n", VarPrefix, index, VarPrefix, ident, VarPrefix, index, VarPrefix, ident)
+			fmt.Fprintf(w, "for %s%s, %s%s := range eval {\n_ = %s%s\ndot := %s%s\n_ = dot\n", varPrefix, index, varPrefix, ident, varPrefix, index, varPrefix, ident)
 		default:
 			return fmt.Errorf("Too many declarations for range")
 		}
@@ -390,7 +396,7 @@ func (t *Translator) translateScoped(w io.Writer, dot reflect.Type, nodeType par
 		case 0:
 		case 1:
 			ident := pipe.Decl[0].Ident[0][1:]
-			fmt.Fprintf(w, "%s%s := eval\n_ = %s%s\n", VarPrefix, ident, VarPrefix, ident)
+			fmt.Fprintf(w, "%s%s := eval\n_ = %s%s\n", varPrefix, ident, varPrefix, ident)
 			t.addToScope(ident, typ)
 		default:
 			return fmt.Errorf("Too many declarations")
@@ -550,7 +556,7 @@ func (t *Translator) translateVariable(w io.Writer, dot reflect.Type, node *pars
 		return nil, err
 	}
 
-	return t.translateFieldChain(w, dot, constantWriterTo(VarPrefix+ident), typ, node.Ident[1:], args, nextCommands)
+	return t.translateFieldChain(w, dot, constantWriterTo(varPrefix+ident), typ, node.Ident[1:], args, nextCommands)
 }
 
 func (t *Translator) generateErrorFunction(typ reflect.Type) string {

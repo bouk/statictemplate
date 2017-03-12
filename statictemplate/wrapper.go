@@ -7,9 +7,9 @@ import (
 	_ "unsafe"
 )
 
-type Template interface {
+type wrappedTemplate interface {
 	Tree() *parse.Tree
-	Lookup(name string) (Template, error)
+	Lookup(name string) (wrappedTemplate, error)
 	Name() string
 }
 
@@ -17,13 +17,13 @@ type textTemplateWrapper struct {
 	*textTemplate.Template
 }
 
-var _ Template = textTemplateWrapper{}
+var _ wrappedTemplate = textTemplateWrapper{}
 
 func (t textTemplateWrapper) Tree() *parse.Tree {
 	return t.Template.Tree
 }
 
-func (t textTemplateWrapper) Lookup(name string) (Template, error) {
+func (t textTemplateWrapper) Lookup(name string) (wrappedTemplate, error) {
 	return textTemplateWrapper{t.Template.Lookup(name)}, nil
 }
 
@@ -31,18 +31,18 @@ type htmlTemplateWrapper struct {
 	*htmlTemplate.Template
 }
 
-var _ Template = htmlTemplateWrapper{}
+var _ wrappedTemplate = htmlTemplateWrapper{}
 
 func (t htmlTemplateWrapper) Tree() *parse.Tree {
 	return t.Template.Tree
 }
 
-func (t htmlTemplateWrapper) Lookup(name string) (Template, error) {
+func (t htmlTemplateWrapper) Lookup(name string) (wrappedTemplate, error) {
 	temp, err := lookupAndEscapeTemplate(t.Template, name)
 	return htmlTemplateWrapper{temp}, err
 }
 
-func wrap(template interface{}) Template {
+func wrap(template interface{}) wrappedTemplate {
 	switch template := template.(type) {
 	case *htmlTemplate.Template:
 		return htmlTemplateWrapper{template}
