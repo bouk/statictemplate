@@ -8,6 +8,7 @@ import (
 
 const HtmlTemplatePrefix = "_html_template_"
 
+/*
 var Funcs = map[string]interface{}{
 	"and":    And,
 	"or":     Or,
@@ -44,6 +45,7 @@ var Funcs = map[string]interface{}{
 	HtmlTemplatePrefix + "urlfilter":       Urlfilter,
 	HtmlTemplatePrefix + "urlnormalizer":   Urlnormalizer,
 }
+*/
 
 //go:linkname and text/template.and
 func and(arg0 interface{}, args ...interface{}) interface{}

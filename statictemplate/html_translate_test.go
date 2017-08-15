@@ -1,9 +1,9 @@
 package statictemplate
 
 import (
+	"go/types"
 	"gopkg.in/stretchr/testify.v1/assert"
 	"html/template"
-	"reflect"
 	"testing"
 )
 
@@ -53,7 +53,7 @@ func fun0(w io.Writer, dot string) error {
 	} {
 		temp := template.Must(template.New("template.tmpl").Parse(c.input))
 		actual, err := Translate(temp, "main", []TranslateInstruction{
-			{"Name", "template.tmpl", reflect.TypeOf("")},
+			{"Name", "template.tmpl", types.Typ[types.String]},
 		})
 		if assert.NoError(t, err, c.input) {
 			equalish(t, c.expected, actual, c.input)
