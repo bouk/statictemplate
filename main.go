@@ -15,6 +15,7 @@ import (
 	htmlTemplate "html/template"
 	textTemplate "text/template"
 
+	"github.com/bouk/statictemplate/internal"
 	"github.com/bouk/statictemplate/statictemplate"
 	"golang.org/x/tools/go/loader"
 )
@@ -37,10 +38,7 @@ func (c *compilationTargets) String() string {
 	return ""
 }
 
-var (
-	valueReferenceRe = regexp.MustCompile(`^(?:(.+)\.)?([A-Za-z][A-Za-z0-9]*)$`)
-	typeNameRe       = regexp.MustCompile(`^([^:]+):([^:]+):([\*\[\]]*)(?:(.+)\.)?([A-Za-z][A-Za-z0-9]*)$`)
-)
+var typeNameRe = regexp.MustCompile(`^([^:]+):([^:]+):([\*\[\]]*)(?:(.+)\.)?([A-Za-z][A-Za-z0-9]*)$`)
 
 func (c *compilationTargets) Set(value string) error {
 	values := typeNameRe.FindStringSubmatch(value)
@@ -162,7 +160,7 @@ func work() error {
 		log.Fatal("no files found matching glob")
 	}
 
-	funcMapImport, funcMapName, funcs, err := importFuncMap(funcMap)
+	funcMapImport, funcMapName, funcs, err := internal.ImportFuncMap(funcMap)
 	if err != nil {
 		return err
 	}

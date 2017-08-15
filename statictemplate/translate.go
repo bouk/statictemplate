@@ -7,24 +7,19 @@ import (
 	"go/types"
 	"io"
 	"path"
-	"strings"
 	"text/template/parse"
 
-	"golang.org/x/tools/go/loader"
+	"github.com/bouk/statictemplate/internal"
 )
 
-const builtinFuncsPkg = "github.com/bouk/statictemplate/funcs"
-
-var builtinFuncs *types.Scope
+var builtinFuncs map[string]*types.Func
 
 func init() {
-	var conf loader.Config
-	conf.Import(builtinFuncsPkg)
-	prog, err := conf.Load()
+	var err error
+	_, _, builtinFuncs, err = internal.ImportFuncMap("github.com/bouk/statictemplate/funcs.Funcs")
 	if err != nil {
 		panic(err)
 	}
-	builtinFuncs = prog.Package(builtinFuncsPkg).Pkg.Scope()
 }
 
 const varPrefix = "_Var"
@@ -611,14 +606,12 @@ func %s(value %s, err error) %s {
 }
 
 func (t *Translator) getFunction(ident string) (*types.Signature, string, error) {
-	prefix := "_html_template_"
-	builtinIdent := strings.Title(strings.TrimPrefix(ident, prefix))
-
 	if f, ok := t.Funcs[ident]; ok {
 		pkgName := t.importPackage(f.Pkg().Path())
 		return f.Type().(*types.Signature), fmt.Sprintf("%s.%s", pkgName, f.Name()), nil
-	} else if f, ok := builtinFuncs.Lookup(builtinIdent).(*types.Func); ok {
-		return f.Type().(*types.Signature), fmt.Sprintf("%s.%s", t.importPackage(builtinFuncsPkg), builtinIdent), nil
+	} else if f, ok := builtinFuncs[ident]; ok {
+		pkgName := t.importPackage(f.Pkg().Path())
+		return f.Type().(*types.Signature), fmt.Sprintf("%s.%s", pkgName, f.Name()), nil
 	} else {
 		return nil, "", fmt.Errorf("unknown function %s", ident)
 	}

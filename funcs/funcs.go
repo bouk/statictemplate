@@ -6,9 +6,6 @@ import (
 	_ "unsafe"
 )
 
-const HtmlTemplatePrefix = "_html_template_"
-
-/*
 var Funcs = map[string]interface{}{
 	"and":    And,
 	"or":     Or,
@@ -30,22 +27,21 @@ var Funcs = map[string]interface{}{
 	"printf":   Printf,
 	"println":  Println,
 
-	HtmlTemplatePrefix + "attrescaper":     Attrescaper,
-	HtmlTemplatePrefix + "commentescaper":  Commentescaper,
-	HtmlTemplatePrefix + "cssescaper":      Cssescaper,
-	HtmlTemplatePrefix + "cssvaluefilter":  Cssvaluefilter,
-	HtmlTemplatePrefix + "htmlnamefilter":  Htmlnamefilter,
-	HtmlTemplatePrefix + "htmlescaper":     Htmlescaper,
-	HtmlTemplatePrefix + "jsregexpescaper": Jsregexpescaper,
-	HtmlTemplatePrefix + "jsstrescaper":    Jsstrescaper,
-	HtmlTemplatePrefix + "jsvalescaper":    Jsvalescaper,
-	HtmlTemplatePrefix + "nospaceescaper":  Htmlnospaceescaper,
-	HtmlTemplatePrefix + "rcdataescaper":   Rcdataescaper,
-	HtmlTemplatePrefix + "urlescaper":      Urlescaper,
-	HtmlTemplatePrefix + "urlfilter":       Urlfilter,
-	HtmlTemplatePrefix + "urlnormalizer":   Urlnormalizer,
+	"_html_template_attrescaper":     Attrescaper,
+	"_html_template_commentescaper":  Commentescaper,
+	"_html_template_cssescaper":      Cssescaper,
+	"_html_template_cssvaluefilter":  Cssvaluefilter,
+	"_html_template_htmlnamefilter":  Htmlnamefilter,
+	"_html_template_htmlescaper":     Htmlescaper,
+	"_html_template_jsregexpescaper": Jsregexpescaper,
+	"_html_template_jsstrescaper":    Jsstrescaper,
+	"_html_template_jsvalescaper":    Jsvalescaper,
+	"_html_template_nospaceescaper":  Htmlnospaceescaper,
+	"_html_template_rcdataescaper":   Rcdataescaper,
+	"_html_template_urlescaper":      Urlescaper,
+	"_html_template_urlfilter":       Urlfilter,
+	"_html_template_urlnormalizer":   Urlnormalizer,
 }
-*/
 
 //go:linkname and text/template.and
 func and(arg0 interface{}, args ...interface{}) interface{}

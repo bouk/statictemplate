@@ -1,16 +1,19 @@
-package main
+package internal
 
 import (
 	"fmt"
 	"go/ast"
 	"go/token"
 	"go/types"
+	"regexp"
 	"strconv"
 
 	"golang.org/x/tools/go/loader"
 )
 
-func importFuncMap(funcMap string) (string, string, map[string]*types.Func, error) {
+var valueReferenceRe = regexp.MustCompile(`^(?:(.+)\.)?([A-Za-z][A-Za-z0-9]*)$`)
+
+func ImportFuncMap(funcMap string) (string, string, map[string]*types.Func, error) {
 	if funcMap == "" {
 		return "", "", nil, nil
 	}
