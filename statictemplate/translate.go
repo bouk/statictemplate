@@ -616,11 +616,11 @@ func (t *Translator) getFunction(ident string) (*types.Signature, string, error)
 
 	if f, ok := t.Funcs[ident]; ok {
 		pkgName := t.importPackage(f.Pkg().Path())
-		return f.Type().(*types.Signature), fmt.Sprintf("%s.%s", pkgName, f.Name), nil
+		return f.Type().(*types.Signature), fmt.Sprintf("%s.%s", pkgName, f.Name()), nil
 	} else if f, ok := builtinFuncs.Lookup(builtinIdent).(*types.Func); ok {
 		return f.Type().(*types.Signature), fmt.Sprintf("%s.%s", t.importPackage(builtinFuncsPkg), builtinIdent), nil
 	} else {
-		return nil, "", fmt.Errorf("Unknown function %s", ident)
+		return nil, "", fmt.Errorf("unknown function %s", ident)
 	}
 }
 

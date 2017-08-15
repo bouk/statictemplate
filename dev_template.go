@@ -21,7 +21,7 @@ import (
   `)
 	}
 	if funcMapImport != "" {
-		io.WriteString(w, funcMapImport)
+		fmt.Fprintf(w, "funcMapImport %q\n", funcMapImport)
 	}
 	for i, target := range targets {
 		if target.dot.packagePath != "" {
@@ -39,7 +39,7 @@ import (
 		fmt.Fprintf(w, `func %s(w io.Writer, dot %s) error {
   temp, err := template.New("")`, target.functionName, dot)
 		if funcMapName != "" {
-			fmt.Fprintf(w, ".Funcs(%s)", funcMapName)
+			fmt.Fprintf(w, ".Funcs(funcMapImport.%s)", funcMapName)
 		}
 		io.WriteString(w, ".ParseFiles(\n")
 		for _, templateFile := range templateFiles {
