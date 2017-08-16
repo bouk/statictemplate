@@ -5,12 +5,19 @@ import (
 	"flag"
 	"fmt"
 	"go/format"
+	"go/types"
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
+
+	htmlTemplate "html/template"
+	textTemplate "text/template"
+
+	"github.com/bouk/statictemplate/internal"
+	"github.com/bouk/statictemplate/statictemplate"
+	"golang.org/x/tools/go/loader"
 )
 
 type dotType struct {
@@ -31,10 +38,7 @@ func (c *compilationTargets) String() string {
 	return ""
 }
 
-var (
-	valueReferenceRe = regexp.MustCompile(`^(?:(.+)\.)?([A-Za-z][A-Za-z0-9]*)$`)
-	typeNameRe       = regexp.MustCompile(`^([^:]+):([^:]+):([\*\[\]]*)(?:(.+)\.)?([A-Za-z][A-Za-z0-9]*)$`)
-)
+var typeNameRe = regexp.MustCompile(`^([^:]+):([^:]+):([\*\[\]]*)(?:(.+)\.)?([A-Za-z][A-Za-z0-9]*)$`)
 
 func (c *compilationTargets) Set(value string) error {
 	values := typeNameRe.FindStringSubmatch(value)
@@ -47,6 +51,36 @@ func (c *compilationTargets) Set(value string) error {
 		typeName:    values[5],
 	}})
 	return nil
+}
+
+func (c compilationTargets) ToInstructions() (ins []statictemplate.TranslateInstruction, err error) {
+	var conf loader.Config
+	for _, t := range c {
+		if p := t.dot.packagePath; p != "" {
+			conf.Import(p)
+		}
+	}
+	var prog *loader.Program
+	prog, err = conf.Load()
+	if err != nil {
+		return
+	}
+	for _, t := range c {
+		var pack *types.Package
+		if t.dot.packagePath != "" {
+			pack = prog.Package(t.dot.packagePath).Pkg
+		}
+		typVal, err := types.Eval(conf.Fset, pack, 0, t.dot.prefix+t.dot.typeName)
+		if err != nil {
+			return nil, err
+		}
+		ins = append(ins, statictemplate.TranslateInstruction{
+			FunctionName: t.functionName,
+			TemplateName: t.templateName,
+			Dot:          typVal.Type,
+		})
+	}
+	return
 }
 
 var (
@@ -68,6 +102,31 @@ func init() {
 	flag.StringVar(&funcMap, "funcs", "", "A reference to a custom Funcs map to include")
 }
 
+func parse(html bool, funcs map[string]*types.Func, files ...string) (interface{}, error) {
+	var dummyFuncs map[string]interface{}
+	if funcs != nil {
+		dummyFuncs = make(map[string]interface{})
+		for key := range funcs {
+			dummyFuncs[key] = func() string {
+				return ""
+			}
+		}
+	}
+	if html {
+		t := htmlTemplate.New("")
+		if dummyFuncs != nil {
+			t.Funcs(dummyFuncs)
+		}
+		return t.ParseFiles(files...)
+	} else {
+		t := textTemplate.New("")
+		if dummyFuncs != nil {
+			t.Funcs(dummyFuncs)
+		}
+		return t.ParseFiles(files...)
+	}
+}
+
 func main() {
 	flag.Parse()
 	if len(targets) == 0 || flag.NArg() < 1 {
@@ -75,10 +134,16 @@ func main() {
 		os.Exit(2)
 	}
 
+	if err := work(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func work() error {
 	if packageName == "" {
 		absOutputFile, err := filepath.Abs(outputFile)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		packageName = filepath.Base(filepath.Dir(absOutputFile))
 	}
@@ -87,7 +152,7 @@ func main() {
 	for i := 0; i < flag.NArg(); i++ {
 		matches, err := filepath.Glob(flag.Arg(i))
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		templateFiles = append(templateFiles, matches...)
 	}
@@ -95,83 +160,75 @@ func main() {
 		log.Fatal("no files found matching glob")
 	}
 
-	dir, err := ioutil.TempDir("", "statictemplate")
+	funcMapImport, funcMapName, funcs, err := internal.ImportFuncMap(funcMap)
 	if err != nil {
-		log.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
-	goFile := filepath.Join(dir, "generate.go")
-	file, err := os.Create(goFile)
-	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	var funcMapImport, funcMapName string
-	if funcMap != "" {
-		values := valueReferenceRe.FindStringSubmatch(funcMap)
-		if values == nil || values[1] == "" {
-			log.Fatal(fmt.Errorf("invalid funcs value %q, expected <import>.<name>", funcMap))
-		}
-		funcMapImport = fmt.Sprintf("funcMapImport %q\n", values[1])
-		funcMapName = fmt.Sprintf("funcMapImport.%s", values[2])
-	}
-
-	if err = writeTemplate(file, targets, templateFiles, html, funcMapImport, funcMapName); err != nil {
-		log.Fatal(err)
-	}
-	if err = file.Close(); err != nil {
-		log.Fatal(err)
-	}
 	var buf bytes.Buffer
 	if devOutputFile != "" {
 		buf.WriteString("// +build !dev\n\n")
 	}
-	cmd := exec.Command("go", "run", goFile)
-	cmd.Stdout = &buf
-	cmd.Stderr = os.Stderr
-	if err = cmd.Run(); err != nil {
-		log.Fatal(err)
+
+	template, err := parse(html, funcs, templateFiles...)
+	if err != nil {
+		return err
 	}
+
+	translator := statictemplate.New(template)
+	translator.Funcs = funcs
+	ins, err := targets.ToInstructions()
+	if err != nil {
+		return err
+	}
+	byts, err := translator.Translate(packageName, ins)
+	if err != nil {
+		return err
+	}
+	buf.Write(byts)
+
 	src, err := format.Source(buf.Bytes())
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	if err := os.MkdirAll(filepath.Dir(outputFile), 0755); err != nil {
-		log.Fatal(err)
+		return err
 	}
-	file, err = os.Create(outputFile)
+
+	file, err := os.Create(outputFile)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	if _, err = file.Write(src); err != nil {
-		log.Fatal(err)
+		return err
 	}
 	file.Close()
 
 	if devOutputFile != "" {
 		buf.Reset()
 		if err = writeDevTemplate(&buf, targets, templateFiles, html, funcMapImport, funcMapName, packageName); err != nil {
-			log.Fatal(err)
+			return err
 		}
 		src, err := format.Source(buf.Bytes())
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		if contents, err := ioutil.ReadFile(devOutputFile); err != nil || !bytes.Equal(contents, src) {
 			if err := os.MkdirAll(filepath.Dir(devOutputFile), 0755); err != nil {
-				log.Fatal(err)
+				return err
 			}
 			file, err := os.Create(devOutputFile)
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 			if _, err = file.Write(src); err != nil {
-				log.Fatal(err)
+				return err
 			}
 			file.Close()
 		}
 	}
+	return nil
 }
