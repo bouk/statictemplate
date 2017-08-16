@@ -10,6 +10,7 @@ import (
 	"text/template/parse"
 
 	"github.com/bouk/statictemplate/internal"
+	"golang.org/x/tools/go/types/typeutil"
 )
 
 var builtinFuncs map[string]*types.Func
@@ -46,8 +47,8 @@ type Translator struct {
 	scopes               []scope
 	template             wrappedTemplate
 	id                   int
-	specializedFunctions map[wrappedTemplate]map[types.Type]string
-	errorFunctions       map[types.Type]string
+	specializedFunctions map[wrappedTemplate]*typeutil.Map
+	errorFunctions       *typeutil.Map
 	generatedFunctions   []string
 	imports              map[string]string
 }
@@ -61,8 +62,8 @@ func New(template interface{}) *Translator {
 		scopes: []scope{
 			make(scope),
 		},
-		specializedFunctions: make(map[wrappedTemplate]map[types.Type]string),
-		errorFunctions:       make(map[types.Type]string),
+		specializedFunctions: make(map[wrappedTemplate]*typeutil.Map),
+		errorFunctions:       &typeutil.Map{},
 		imports:              make(map[string]string),
 		template:             wrapped,
 	}
@@ -275,8 +276,12 @@ func (t *Translator) translateNode(w io.Writer, node parse.Node, dot types.Type)
 	}
 }
 
+func typeIsNil(typ types.Type) bool {
+	return typ == nil || types.Identical(typ, types.Typ[types.UntypedNil])
+}
+
 func writeTruthiness(w io.Writer, typ types.Type) error {
-	if typ == nil {
+	if typeIsNil(typ) {
 		_, err := io.WriteString(w, "eval != nil")
 		return err
 	}
@@ -311,22 +316,22 @@ func writeTruthiness(w io.Writer, typ types.Type) error {
 func (t *Translator) generateTemplate(temp wrappedTemplate, typ types.Type) (string, error) {
 	funcs, ok := t.specializedFunctions[temp]
 	if !ok {
-		funcs = make(map[types.Type]string)
+		funcs = &typeutil.Map{}
 		t.specializedFunctions[temp] = funcs
 	}
-	functionName, ok := funcs[typ]
+	functionName, ok := funcs.At(typ).(string)
 	if !ok {
 		functionName = t.generateFunctionName()
-		funcs[typ] = functionName
+		funcs.Set(typ, functionName)
 
 		var buf bytes.Buffer
 		typeName := "interface{}"
-		if typ != nil {
+		if !typeIsNil(typ) {
 			typeName = t.typeName(typ)
 		}
 
 		fmt.Fprintf(&buf, "// %s(", temp.Name())
-		if typ == nil {
+		if typeIsNil(typ) {
 			buf.WriteString("nil")
 		} else {
 			buf.WriteString(typeName)
@@ -452,7 +457,7 @@ func (t *Translator) translateScoped(w io.Writer, dot types.Type, nodeType parse
 func (t *Translator) translatePipe(w io.Writer, dot types.Type, pipe *parse.PipeNode) (types.Type, error) {
 	if pipe == nil {
 		io.WriteString(w, "nil")
-		return nil, nil
+		return types.Typ[types.UntypedNil], nil
 	} else {
 		return t.translateCommand(w, dot, pipe.Cmds[len(pipe.Cmds)-1], pipe.Cmds[:len(pipe.Cmds)-1])
 	}
@@ -589,7 +594,7 @@ func (t *Translator) translateVariable(w io.Writer, dot types.Type, node *parse.
 }
 
 func (t *Translator) generateErrorFunction(typ types.Type) string {
-	name, ok := t.errorFunctions[typ]
+	name, ok := t.errorFunctions.At(typ).(string)
 	if !ok {
 		name = t.generateFunctionName()
 		typeName := t.typeName(typ)
@@ -601,6 +606,7 @@ func %s(value %s, err error) %s {
 	}
 	return value
 }`, name, typeName, typeName))
+		t.errorFunctions.Set(typ, name)
 	}
 	return name
 }
