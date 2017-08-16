@@ -55,6 +55,7 @@ func (c *compilationTargets) Set(value string) error {
 
 func (c compilationTargets) ToInstructions() (ins []statictemplate.TranslateInstruction, err error) {
 	var conf loader.Config
+	conf.Import("runtime")
 	for _, t := range c {
 		if p := t.dot.packagePath; p != "" {
 			conf.Import(p)
