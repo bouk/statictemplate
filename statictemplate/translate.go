@@ -186,7 +186,7 @@ func (t *Translator) findVariable(name string) (types.Type, error) {
 			return typ, nil
 		}
 	}
-	return nil, fmt.Errorf("Can't find variable %s in scope", name)
+	return nil, fmt.Errorf("can't find variable %s in scope", name)
 }
 
 type sortedTypes []types.Type
@@ -209,17 +209,6 @@ type resultEntry struct {
 
 func (t *Translator) translateNode(w io.Writer, node parse.Node, dot types.Type) error {
 	switch node := node.(type) {
-	case *parse.ListNode:
-		for _, item := range node.Nodes {
-			if err := t.translateNode(w, item, dot); err != nil {
-				return err
-			}
-		}
-		return nil
-	case *parse.TextNode:
-		t.importPackage("io")
-		_, err := fmt.Fprintf(w, "_, _ = io.WriteString(w, %q)\n", node.Text)
-		return err
 	case *parse.ActionNode:
 		pipe := node.Pipe
 		writer := w
@@ -233,7 +222,7 @@ func (t *Translator) translateNode(w io.Writer, node parse.Node, dot types.Type)
 				fmt.Fprintf(writer, "%s%s := ", varPrefix, ident)
 			}
 		} else {
-			return fmt.Errorf("Only support single variable for assignment")
+			return fmt.Errorf("only support single variable for assignment")
 		}
 
 		typ, err := t.translatePipe(writer, dot, pipe)
@@ -263,16 +252,27 @@ func (t *Translator) translateNode(w io.Writer, node parse.Node, dot types.Type)
 		_, err = io.WriteString(w, "\n")
 
 		return err
-	case *parse.WithNode:
-		return t.translateScoped(w, dot, node.Type(), node.Pipe, node.List, node.ElseList)
 	case *parse.IfNode:
 		return t.translateScoped(w, dot, node.Type(), node.Pipe, node.List, node.ElseList)
+	case *parse.ListNode:
+		for _, item := range node.Nodes {
+			if err := t.translateNode(w, item, dot); err != nil {
+				return err
+			}
+		}
+		return nil
 	case *parse.RangeNode:
 		return t.translateScoped(w, dot, node.Type(), node.Pipe, node.List, node.ElseList)
 	case *parse.TemplateNode:
 		return t.translateTemplate(w, dot, node)
+	case *parse.TextNode:
+		t.importPackage("io")
+		_, err := fmt.Fprintf(w, "_, _ = io.WriteString(w, %q)\n", node.Text)
+		return err
+	case *parse.WithNode:
+		return t.translateScoped(w, dot, node.Type(), node.Pipe, node.List, node.ElseList)
 	default:
-		return fmt.Errorf("Unknown Node %s", node.Type())
+		return fmt.Errorf("unknown Node %s", node.Type())
 	}
 }
 
@@ -289,12 +289,6 @@ func writeTruthiness(w io.Writer, typ types.Type) error {
 	case *types.Array, *types.Map, *types.Slice:
 		_, err := io.WriteString(w, "len(eval) != 0")
 		return err
-	case *types.Pointer, *types.Chan:
-		_, err := io.WriteString(w, "eval != nil")
-		return err
-	case *types.Struct:
-		_, err := io.WriteString(w, "true")
-		return err
 	case *types.Basic:
 		info := typ.Info()
 		if info&types.IsNumeric != 0 {
@@ -307,9 +301,15 @@ func writeTruthiness(w io.Writer, typ types.Type) error {
 			_, err := io.WriteString(w, "eval")
 			return err
 		}
-		return fmt.Errorf("Don't know how to evaluate %s", typ)
+		return fmt.Errorf("don't know how to evaluate %s", typ)
+	case *types.Pointer, *types.Chan:
+		_, err := io.WriteString(w, "eval != nil")
+		return err
+	case *types.Struct:
+		_, err := io.WriteString(w, "true")
+		return err
 	default:
-		return fmt.Errorf("Don't know how to evaluate %s", typ)
+		return fmt.Errorf("don't know how to evaluate %s", typ)
 	}
 }
 
@@ -417,7 +417,7 @@ func (t *Translator) translateScoped(w io.Writer, dot types.Type, nodeType parse
 			t.addToScope(ident, elem)
 			fmt.Fprintf(w, "for %s%s, %s%s := range eval {\n_ = %s%s\ndot := %s%s\n_ = dot\n", varPrefix, index, varPrefix, ident, varPrefix, index, varPrefix, ident)
 		default:
-			return fmt.Errorf("Too many declarations for range")
+			return fmt.Errorf("too many declarations for range")
 		}
 
 		if err := t.translateNode(w, list, elem); err != nil {
@@ -433,7 +433,7 @@ func (t *Translator) translateScoped(w io.Writer, dot types.Type, nodeType parse
 			fmt.Fprintf(w, "%s%s := eval\n_ = %s%s\n", varPrefix, ident, varPrefix, ident)
 			t.addToScope(ident, typ)
 		default:
-			return fmt.Errorf("Too many declarations")
+			return fmt.Errorf("too many declarations")
 		}
 
 		if err := t.translateNode(w, list, dot); err != nil {
@@ -490,10 +490,10 @@ func (t *Translator) translateCommand(w io.Writer, dot types.Type, cmd *parse.Co
 	args := cmd.Args[1:]
 
 	switch action := action.(type) {
-	case *parse.FieldNode:
-		return t.translateField(w, dot, action, args, nextCommands)
 	case *parse.ChainNode:
 		return t.translateChain(w, dot, action, args, nextCommands)
+	case *parse.FieldNode:
+		return t.translateField(w, dot, action, args, nextCommands)
 	case *parse.IdentifierNode:
 		return t.translateFunction(w, dot, action, args, nextCommands)
 	case *parse.PipeNode:
@@ -504,7 +504,7 @@ func (t *Translator) translateCommand(w io.Writer, dot types.Type, cmd *parse.Co
 	}
 
 	if len(args) > 0 || len(nextCommands) > 0 {
-		return nil, fmt.Errorf("Dunno what to do with args %v %s %v", cmd.Args, action.Type(), nextCommands)
+		return nil, fmt.Errorf("dunno what to do with args %v %s %v", cmd.Args, action.Type(), nextCommands)
 	}
 
 	switch action := action.(type) {
@@ -530,38 +530,30 @@ func (t *Translator) translateCommand(w io.Writer, dot types.Type, cmd *parse.Co
 			_, err := fmt.Fprint(w, action.Complex128)
 			return types.Typ[types.Complex128], err
 		} else {
-			return nil, fmt.Errorf("Unknown number node %v", action)
+			return nil, fmt.Errorf("unknown number node %v", action)
 		}
 	case *parse.StringNode:
 		_, err := fmt.Fprintf(w, "%q", action.Text)
 		return types.Typ[types.String], err
 	default:
-		return nil, fmt.Errorf("Unknown pipe node %s, %s", action.String(), action.Type())
+		return nil, fmt.Errorf("unknown pipe node %s, %s", action.String(), action.Type())
 	}
 }
 
 func (t *Translator) translateArg(w io.Writer, dot types.Type, arg parse.Node) (types.Type, error) {
 	switch arg := arg.(type) {
-	case *parse.FieldNode:
-		return t.translateField(w, dot, arg, nil, nil)
-	case *parse.ChainNode:
-		return t.translateChain(w, dot, arg, nil, nil)
-	case *parse.IdentifierNode:
-		return t.translateFunction(w, dot, arg, nil, nil)
-	case *parse.PipeNode:
-		if len(arg.Decl) > 0 {
-			// TODO(bouk): do (is it even possible?)
-			return nil, fmt.Errorf("Can't process inline variable assignment right now")
-		}
-		return t.translatePipe(w, dot, arg)
-	case *parse.VariableNode:
-		return t.translateVariable(w, dot, arg, nil, nil)
 	case *parse.BoolNode:
 		_, err := fmt.Fprint(w, arg.True)
 		return types.Typ[types.Bool], err
+	case *parse.ChainNode:
+		return t.translateChain(w, dot, arg, nil, nil)
 	case *parse.DotNode:
 		_, err := io.WriteString(w, "dot")
 		return dot, err
+	case *parse.FieldNode:
+		return t.translateField(w, dot, arg, nil, nil)
+	case *parse.IdentifierNode:
+		return t.translateFunction(w, dot, arg, nil, nil)
 	case *parse.NilNode:
 		_, err := io.WriteString(w, "nil")
 		return types.Typ[types.UntypedNil], err
@@ -570,13 +562,21 @@ func (t *Translator) translateArg(w io.Writer, dot types.Type, arg parse.Node) (
 			_, err := fmt.Fprint(w, arg.Int64)
 			return types.Typ[types.Int64], err
 		} else {
-			return nil, fmt.Errorf("Unknown number node %v", arg)
+			return nil, fmt.Errorf("unknown number node %v", arg)
 		}
+	case *parse.PipeNode:
+		if len(arg.Decl) > 0 {
+			// TODO(bouk): do (is it even possible?)
+			return nil, fmt.Errorf("can't process inline variable assignment right now")
+		}
+		return t.translatePipe(w, dot, arg)
 	case *parse.StringNode:
 		_, err := fmt.Fprintf(w, "%q", arg.Text)
 		return types.Typ[types.String], err
+	case *parse.VariableNode:
+		return t.translateVariable(w, dot, arg, nil, nil)
 	default:
-		return nil, fmt.Errorf("Unknown arg %s, %s", arg.String(), arg.Type())
+		return nil, fmt.Errorf("unknown arg %s, %s", arg.String(), arg.Type())
 	}
 }
 
@@ -592,7 +592,7 @@ func (t *Translator) translateChain(w io.Writer, dot types.Type, node *parse.Cha
 func (t *Translator) translateVariable(w io.Writer, dot types.Type, node *parse.VariableNode, args []parse.Node, nextCommands []*parse.CommandNode) (types.Type, error) {
 	ident := node.Ident[0][1:]
 	if len(node.Ident) > 1 && (len(args) != 0 || len(nextCommands) != 0) {
-		return nil, fmt.Errorf("Can't call variable %s", node.Ident[0])
+		return nil, fmt.Errorf("can't call variable %s", node.Ident[0])
 	}
 	typ, err := t.findVariable(ident)
 	if err != nil {
@@ -643,7 +643,7 @@ func (t *Translator) translateFunction(w io.Writer, dot types.Type, ident *parse
 	if numOut == 2 {
 		fmt.Fprintf(w, "%s(", t.generateErrorFunction(typ))
 	} else if numOut != 1 {
-		return nil, fmt.Errorf("Only support 1, 2 output variable %s", ident.Ident)
+		return nil, fmt.Errorf("only support 1, 2 output variable %s", ident.Ident)
 	}
 
 	io.WriteString(w, fName)
@@ -678,7 +678,7 @@ func (t *Translator) translateFieldChain(w io.Writer, dot types.Type, dotCode io
 			if numOut == 2 {
 				guards = append(guards, fmt.Sprintf("%s(", t.generateErrorFunction(typ)))
 			} else if numOut != 1 {
-				return nil, fmt.Errorf("Only support 1, 2 output variable %s.%s", t.typeName(typ), obj.Name)
+				return nil, fmt.Errorf("only support 1, 2 output variable %s.%s", t.typeName(typ), obj.Name)
 			}
 			fmt.Fprintf(&buf, ".%s", name)
 
@@ -698,7 +698,7 @@ func (t *Translator) translateFieldChain(w io.Writer, dot types.Type, dotCode io
 			fmt.Fprintf(&buf, ".%s", name)
 			typ = obj.Type()
 		default:
-			return nil, fmt.Errorf("Unknown field %s for type %s", name, typ.String())
+			return nil, fmt.Errorf("unknown field %s for type %s", name, typ.String())
 		}
 	}
 	for i := len(guards) - 1; i >= 0; i-- {
@@ -714,6 +714,12 @@ func (t *Translator) translateFieldChain(w io.Writer, dot types.Type, dotCode io
 
 func (t *Translator) typeName(typ types.Type) string {
 	switch obj := typ.(type) {
+	case *types.Array:
+		return fmt.Sprintf("[%d]%s", obj.Len(), t.typeName(obj.Elem()))
+	case *types.Chan:
+		return fmt.Sprintf("chan %s", t.typeName(obj.Elem()))
+	case *types.Map:
+		return fmt.Sprintf("map[%s]%s", t.typeName(obj.Key()), t.typeName(obj.Elem()))
 	case *types.Named:
 		name := obj.Obj()
 		return t.importPackage(name.Pkg().Path()) + "." + name.Name()
@@ -721,12 +727,6 @@ func (t *Translator) typeName(typ types.Type) string {
 		return fmt.Sprintf("*%s", t.typeName(obj.Elem()))
 	case *types.Slice:
 		return fmt.Sprintf("[]%s", t.typeName(obj.Elem()))
-	case *types.Map:
-		return fmt.Sprintf("map[%s]%s", t.typeName(obj.Key()), t.typeName(obj.Elem()))
-	case *types.Chan:
-		return fmt.Sprintf("chan %s", t.typeName(obj.Elem()))
-	case *types.Array:
-		return fmt.Sprintf("[%d]%s", obj.Len(), t.typeName(obj.Elem()))
 	default:
 		return typ.String()
 	}
