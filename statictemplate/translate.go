@@ -520,6 +520,15 @@ func (t *Translator) translateCommand(w io.Writer, dot types.Type, cmd *parse.Co
 		if action.IsInt {
 			_, err := fmt.Fprint(w, action.Int64)
 			return types.Typ[types.Int64], err
+		} else if action.IsUint {
+			_, err := fmt.Fprint(w, action.Uint64)
+			return types.Typ[types.Uint64], err
+		} else if action.IsFloat {
+			_, err := fmt.Fprint(w, action.Float64)
+			return types.Typ[types.Float64], err
+		} else if action.IsComplex {
+			_, err := fmt.Fprint(w, action.Complex128)
+			return types.Typ[types.Complex128], err
 		} else {
 			return nil, fmt.Errorf("Unknown number node %v", action)
 		}
