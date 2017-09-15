@@ -673,10 +673,10 @@ func (t *Translator) translateFieldChain(w io.Writer, dot types.Type, dotCode io
 		case *types.Func:
 			sig := obj.Type().(*types.Signature)
 			out := sig.Results()
-			typ = out.At(0).Type()
 			numOut := out.Len()
+			returnTyp := out.At(0).Type()
 			if numOut == 2 {
-				guards = append(guards, fmt.Sprintf("%s(", t.generateErrorFunction(typ)))
+				guards = append(guards, fmt.Sprintf("%s(", t.generateErrorFunction(returnTyp)))
 			} else if numOut != 1 {
 				return nil, fmt.Errorf("only support 1, 2 output variable %s.%s", t.typeName(typ), obj.Name)
 			}
@@ -694,6 +694,7 @@ func (t *Translator) translateFieldChain(w io.Writer, dot types.Type, dotCode io
 			if numOut == 2 {
 				io.WriteString(&buf, ")")
 			}
+			typ = returnTyp
 		case *types.Var:
 			fmt.Fprintf(&buf, ".%s", name)
 			typ = obj.Type()
