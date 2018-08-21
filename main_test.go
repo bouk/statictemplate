@@ -10,7 +10,7 @@ func TestParseCompilationTargets(t *testing.T) {
 	assert.NoError(t, ct.Set("Hi:hi.tmpl:string"))
 	assert.NoError(t, ct.Set("Hello:hi.tmpl:*text/template.Template"))
 	assert.NoError(t, ct.Set("Cool:hi.tmpl:text/template.Template"))
-	assert.NoError(t, ct.Set("Neat:hi.tmpl:*github.com/bouk/whatever.Template"))
+	assert.NoError(t, ct.Set("Neat:hi.tmpl:*bou.ke/whatever.Template"))
 	expected := compilationTargets{
 		compilationTarget{
 			functionName: "Hi",
@@ -43,7 +43,7 @@ func TestParseCompilationTargets(t *testing.T) {
 			functionName: "Neat",
 			templateName: "hi.tmpl",
 			dot: dotType{
-				packagePath: "github.com/bouk/whatever",
+				packagePath: "bou.ke/whatever",
 				typeName:    "Template",
 				prefix:      "*",
 			},

@@ -1,4 +1,4 @@
-package internal
+package internal // import "bou.ke/statictemplate/internal"
 
 import (
 	"fmt"

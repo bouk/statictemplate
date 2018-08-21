@@ -13,7 +13,7 @@ func TestComplexInput(t *testing.T) {
 	structA := types.NewStruct([]*types.Var{types.NewVar(0, nil, "A", types.Typ[types.String])}, nil)
 	structASlice := types.NewStruct([]*types.Var{types.NewVar(0, nil, "A", types.NewSlice(types.Typ[types.Int]))}, nil)
 	structABool := types.NewStruct([]*types.Var{types.NewVar(0, nil, "A", types.Typ[types.Bool])}, nil)
-	p := types.NewPackage("github.com/bouk/statictemplate/statictemplate", "statictemplate")
+	p := types.NewPackage("bou.ke/statictemplate/statictemplate", "statictemplate")
 	emptyStruct := types.NewStruct(nil, nil)
 	testStruct := types.NewNamed(types.NewTypeName(0, p, "testStruct", emptyStruct), emptyStruct, []*types.Func{
 		types.NewFunc(0, p, "Hello", types.NewSignature(types.NewVar(0, p, "t", emptyStruct), types.NewTuple(), types.NewTuple(
@@ -160,7 +160,7 @@ func fun0(w io.Writer, dot []string) error {
 package main
 
 import (
-  "github.com/bouk/statictemplate/funcs"
+  "bou.ke/statictemplate/funcs"
   "io"
 )
 
@@ -367,7 +367,7 @@ func fun0(w io.Writer, dot struct{ A []int }) error {
 package main
 
 import (
-  pkg1 "github.com/bouk/statictemplate/statictemplate"
+  pkg1 "bou.ke/statictemplate/statictemplate"
   "io"
 )
 
@@ -392,7 +392,7 @@ func fun0(w io.Writer, dot pkg1.testStruct) error {
 package main
 
 import (
-  pkg1 "github.com/bouk/statictemplate/statictemplate"
+  pkg1 "bou.ke/statictemplate/statictemplate"
   "io"
 )
 
@@ -417,7 +417,7 @@ func fun0(w io.Writer, dot *pkg1.testStruct) error {
 package main
 
 import (
-  pkg1 "github.com/bouk/statictemplate/statictemplate"
+  pkg1 "bou.ke/statictemplate/statictemplate"
   "io"
 )
 
@@ -442,7 +442,7 @@ func fun0(w io.Writer, dot pkg1.testStruct) error {
 package main
 
 import (
-  pkg1 "github.com/bouk/statictemplate/statictemplate"
+  pkg1 "bou.ke/statictemplate/statictemplate"
   "io"
 )
 
@@ -467,8 +467,8 @@ func fun0(w io.Writer, dot pkg1.testStruct) error {
 package main
 
 import (
-  "github.com/bouk/statictemplate/funcs"
-  pkg1 "github.com/bouk/statictemplate/statictemplate"
+  "bou.ke/statictemplate/funcs"
+  pkg1 "bou.ke/statictemplate/statictemplate"
   "io"
 )
 
@@ -493,7 +493,7 @@ func fun0(w io.Writer, dot pkg1.testStruct) error {
 package main
 
 import (
-  pkg1 "github.com/bouk/statictemplate/statictemplate"
+  pkg1 "bou.ke/statictemplate/statictemplate"
   "io"
 )
 
@@ -518,7 +518,7 @@ func fun0(w io.Writer, dot pkg1.testStruct) error {
 package main
 
 import (
-  pkg1 "github.com/bouk/statictemplate/statictemplate"
+  pkg1 "bou.ke/statictemplate/statictemplate"
   "io"
 )
 
@@ -543,8 +543,8 @@ func fun0(w io.Writer, dot pkg1.testStruct) error {
 package main
 
 import (
+  pkg1 "bou.ke/statictemplate/statictemplate"
   "fmt"
-  pkg1 "github.com/bouk/statictemplate/statictemplate"
   "io"
 )
 
@@ -580,8 +580,8 @@ func fun0(w io.Writer, dot pkg1.testStruct) error {
 package main
 
 import (
+  pkg1 "bou.ke/statictemplate/statictemplate"
   "fmt"
-  pkg1 "github.com/bouk/statictemplate/statictemplate"
   "io"
 )
 

@@ -23,7 +23,7 @@ func TestCompileHTMLTemplate(t *testing.T) {
 `, `package main
 
 import (
-  "github.com/bouk/statictemplate/funcs"
+  "bou.ke/statictemplate/funcs"
   "io"
 )
 

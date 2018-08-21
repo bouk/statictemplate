@@ -9,7 +9,7 @@ import (
 	"path"
 	"text/template/parse"
 
-	"github.com/bouk/statictemplate/internal"
+	"bou.ke/statictemplate/internal"
 	"golang.org/x/tools/go/types/typeutil"
 )
 
@@ -17,7 +17,7 @@ var builtinFuncs map[string]*types.Func
 
 func init() {
 	var err error
-	_, _, builtinFuncs, err = internal.ImportFuncMap("github.com/bouk/statictemplate/funcs.Funcs")
+	_, _, builtinFuncs, err = internal.ImportFuncMap("bou.ke/statictemplate/funcs.Funcs")
 	if err != nil {
 		panic(err)
 	}
@@ -144,7 +144,7 @@ func (t *Translator) importPackage(name string) string {
 		pkg = name
 	case "text/template":
 		pkg = "template"
-	case "github.com/bouk/statictemplate/funcs":
+	case "bou.ke/statictemplate/funcs":
 		pkg = "funcs"
 	default:
 		pkg = fmt.Sprintf("pkg%d", t.id)
@@ -272,7 +272,7 @@ func (t *Translator) translateNode(w io.Writer, node parse.Node, dot types.Type)
 	case *parse.WithNode:
 		return t.translateScoped(w, dot, node.Type(), node.Pipe, node.List, node.ElseList)
 	default:
-		return fmt.Errorf("unknown Node %s", node.Type())
+		return fmt.Errorf("unknown Node %v", node.Type())
 	}
 }
 
@@ -504,7 +504,7 @@ func (t *Translator) translateCommand(w io.Writer, dot types.Type, cmd *parse.Co
 	}
 
 	if len(args) > 0 || len(nextCommands) > 0 {
-		return nil, fmt.Errorf("dunno what to do with args %v %s %v", cmd.Args, action.Type(), nextCommands)
+		return nil, fmt.Errorf("dunno what to do with args %v %v %v", cmd.Args, action.Type(), nextCommands)
 	}
 
 	switch action := action.(type) {
@@ -536,7 +536,7 @@ func (t *Translator) translateCommand(w io.Writer, dot types.Type, cmd *parse.Co
 		_, err := fmt.Fprintf(w, "%q", action.Text)
 		return types.Typ[types.String], err
 	default:
-		return nil, fmt.Errorf("unknown pipe node %s, %s", action.String(), action.Type())
+		return nil, fmt.Errorf("unknown pipe node %s, %v", action.String(), action.Type())
 	}
 }
 
@@ -576,7 +576,7 @@ func (t *Translator) translateArg(w io.Writer, dot types.Type, arg parse.Node) (
 	case *parse.VariableNode:
 		return t.translateVariable(w, dot, arg, nil, nil)
 	default:
-		return nil, fmt.Errorf("unknown arg %s, %s", arg.String(), arg.Type())
+		return nil, fmt.Errorf("unknown arg %s, %v", arg.String(), arg.Type())
 	}
 }
 
@@ -678,7 +678,7 @@ func (t *Translator) translateFieldChain(w io.Writer, dot types.Type, dotCode io
 			if numOut == 2 {
 				guards = append(guards, fmt.Sprintf("%s(", t.generateErrorFunction(returnTyp)))
 			} else if numOut != 1 {
-				return nil, fmt.Errorf("only support 1, 2 output variable %s.%s", t.typeName(typ), obj.Name)
+				return nil, fmt.Errorf("only support 1, 2 output variable %s.%s", t.typeName(typ), obj.Name())
 			}
 			fmt.Fprintf(&buf, ".%s", name)
 

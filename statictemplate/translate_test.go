@@ -93,7 +93,7 @@ func fun0(w io.Writer, dot string) error {
 package main
 
 import (
-  "github.com/bouk/statictemplate/funcs"
+  "bou.ke/statictemplate/funcs"
   "io"
 )
 
@@ -118,7 +118,7 @@ func fun0(w io.Writer, dot string) error {
 package main
 
 import (
-  "github.com/bouk/statictemplate/funcs"
+  "bou.ke/statictemplate/funcs"
   "io"
 )
 
@@ -351,7 +351,7 @@ func fun0(w io.Writer, dot string) error {
 package main
 
 import (
-  "github.com/bouk/statictemplate/funcs"
+  "bou.ke/statictemplate/funcs"
   "io"
 )
 
@@ -376,7 +376,7 @@ func fun0(w io.Writer, dot string) error {
 package main
 
 import (
-  "github.com/bouk/statictemplate/funcs"
+  "bou.ke/statictemplate/funcs"
   "io"
 )
 
@@ -401,7 +401,7 @@ func fun0(w io.Writer, dot string) error {
 package main
 
 import (
-  "github.com/bouk/statictemplate/funcs"
+  "bou.ke/statictemplate/funcs"
   "io"
 )
 
@@ -426,7 +426,7 @@ func fun0(w io.Writer, dot string) error {
 package main
 
 import (
-  "github.com/bouk/statictemplate/funcs"
+  "bou.ke/statictemplate/funcs"
   "io"
 )
 
@@ -451,7 +451,7 @@ func fun0(w io.Writer, dot string) error {
 package main
 
 import (
-  "github.com/bouk/statictemplate/funcs"
+  "bou.ke/statictemplate/funcs"
   "io"
 )
 
