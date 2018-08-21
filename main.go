@@ -1,4 +1,4 @@
-package main
+package main // import "bou.ke/statictemplate"
 
 import (
 	"bytes"
@@ -15,8 +15,8 @@ import (
 	htmlTemplate "html/template"
 	textTemplate "text/template"
 
-	"github.com/bouk/statictemplate/internal"
-	"github.com/bouk/statictemplate/statictemplate"
+	"bou.ke/statictemplate/internal"
+	"bou.ke/statictemplate/statictemplate"
 	"golang.org/x/tools/go/loader"
 )
 

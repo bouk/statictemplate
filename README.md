@@ -6,7 +6,7 @@ Please read [my blogpost](http://bouk.co/blog/code-generating-code/) about this 
 
 ## Installation
 
-To install the commandline tool, run `go get github.com/bouk/statictemplate`.
+To install the commandline tool, run `go get bou.ke/statictemplate`.
 
 ## Usage
 
@@ -34,9 +34,9 @@ After the flags you pass in one or more globs to specify the templates.
 The example in this project uses the following command
 
 ```
-statictemplate -html -o example/template/template.go -t "Index:index.tmpl:[]github.com/bouk/statictemplate/example.Post" example/template/*.tmpl
+statictemplate -html -o example/template/template.go -t "Index:index.tmpl:[]bou.ke/statictemplate/example.Post" example/template/*.tmpl
 ```
 
 ## Docs
 
-[Check out the docs](https://godoc.org/github.com/bouk/statictemplate/statictemplate).
+[Check out the docs](https://godoc.org/bou.ke/statictemplate/statictemplate).

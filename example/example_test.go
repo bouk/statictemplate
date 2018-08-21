@@ -1,10 +1,10 @@
 package example_test
 
 import (
+	"bou.ke/statictemplate/example"
+	staticTemplate "bou.ke/statictemplate/example/template"
 	"bytes"
 	"fmt"
-	"github.com/bouk/statictemplate/example"
-	staticTemplate "github.com/bouk/statictemplate/example/template"
 	"testing"
 	"text/template"
 )

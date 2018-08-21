@@ -1,8 +1,8 @@
 package template
 
 import (
-	pkg1 "github.com/bouk/statictemplate/example"
-	"github.com/bouk/statictemplate/funcs"
+	pkg1 "bou.ke/statictemplate/example"
+	"bou.ke/statictemplate/funcs"
 	"io"
 )
 
